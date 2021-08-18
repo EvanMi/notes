@@ -350,3 +350,31 @@ rebase最佳实践
 
 ```
 
+## gradle
+
+```
+插件
+apply plugin: 'java'
+apply plugin: 'war'
+apply plugin: 'idea'
+apply plugin: 'maven'
+
+申明自己
+group 'com.test'
+version '1.0'
+
+gradle 中的依赖
+	compile 'g:a:v' 或者 group: 'g',name: 'a', version: 'v'
+	
+	# testCompile providedCompile
+	# gretty 是一个很好用的插件，可以直接代替tomcat	
+
+配置字符集
+tasks.withType(JavaCompile) {
+	options.encoding = 'UTF-8'
+}
+[compileJava, javadoc, compileTestJava]*.options*.encoding = 'UTF-8'
+
+
+```
+
