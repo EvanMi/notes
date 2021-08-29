@@ -209,3 +209,196 @@ QPS 和 TPS的区别：
 PV(Page View) ：页面访问量，即页面浏览量或点击量，用户每次刷新就被计算一次。可以统一服务器一天的访问日志得到。
 
 UV(Unique Visitor) : 独立访客，统计1天内访问某站点的用户数。
+
+## Java Type
+
+1.ParameterizedType
+
+ParameterizedType表示参数化类型，也就是泛型，例如List<T> Set<T>等。
+
+有三个方法，
+
+1.1 getActualTypeArguments
+
+获取泛型中的实际类型，可能会存在多个泛型，例如Map<K,V>，所以会返回Type[]数组。值得注意的是，无论<>中有几层嵌套（List<Map<String,Integer>）,该方法返回的都是脱去最外层的<>以后的内容（Map<Stirng,Ingeger>）。
+
+1.2 getRawType
+
+获取声明泛型的类或者接口，也就是泛型中<>前面的值。Map<String,Integet>返回 java.util.Map。
+
+1.3 getOwnerType
+
+获取内部类的拥有者的类型，例如Map.Entry<String,String> 会返回 java.util.Map。
+
+2.GenericArrayType
+
+泛型数组类型，例如List<String>[] T[] 等。
+
+2.1 getGenericCompontType 
+
+返回泛型数组中的元素的Type类型，即List<String>[] 中的 List<String>(ParamerterizedTypeImpl)、T[]中的T（TypeVatiableImpl）。无论是几维数组，该方法都只会删除最右边的[]，返回剩余的内容。
+
+3.TypeVariable
+
+泛型的类型变量，指的是List<T> , Map<K,V>中的T,K,V等值。
+
+3.1getBounds
+
+获得该类型变量的上限，也就是泛型中extends右边的值；例如List<T extends Number> 返回的是Number；没有指明默认返回Object。值得注意的是，类型变量的上限可以为多个，必须使用&符号相连接，例如 List<T extends Number & Serializable>；其中，& 后必须为接口。
+
+3.2getGenericDeclaration
+
+获取声明该类型变量的实体，例如 Map<K,V>中的Map。而其中的GenericDeclaration（可以是Class Constructor Method）。
+
+3.3getName
+
+获取类型变量在源码中定义的名称。
+
+4.Class 
+
+5.WildcardType
+
+？---通配符表达式，表示通配符泛型，但是WildcardType并不属于Java-Type中的一种；例如：List<? extends Number> 和 List<? super Integer>。
+
+5.1getUpperBounds
+
+例如 List<? extends Number> 返回 Number
+
+5.2getLowerBounds
+
+例如 List<? super String> 返回 String
+
+## 泛型擦除
+
+泛型实参只会在类、字段及方法参数内保存其签名，无法通过反射动态获取泛型实例的具体实参。
+
+大白话就是，在编译为字节码后具体的.class文件中会保存该class的类、字段及方法参数上的泛型签名，定义的时候什么样获取的时候就是什么样。
+
+在JVM中，方法体内中定义的***<u>对象</u>***的泛型、field上的泛型都会被擦除，变成类型转换。
+
+
+
+如何获取泛型实参？
+
+1、通过传递实参类型 ---- 也就是明确通过传递class的方式指定
+
+2、明确定义泛型实参类型，通过反射获取签名 ---- 说白了，就是写代码的时候就在在类、字段、方法参数上定义了具体的泛型，利用了签名会被保存的原理。
+
+3、通过匿名类捕获相关的泛型实参 ---- 创建了匿名类，jvm会为它生成class文件，也就能够保存签名信息了。
+
+### 一个有趣的泛型擦除实验
+
+```java
+public abstract class  A<T> {
+    public T a(T t) { return t;}
+}
+
+public abstract class B<T> extends A<T> {
+
+    abstract public void b(T t);
+}
+
+public class C extends B<String> {
+
+    @Override
+    public void b(String s) {
+
+    }
+}
+
+
+```
+
+在C中方法b已经明确的将B中的方法b的泛型T变成了String。所以通过方法参数可以直接获取泛型的信息（1.8以前），也可以通过类签名获取泛型的信息或者方法参数的签名信息获取泛型的信息（1.8）。
+
+同时在进行实验的过程中，发现在C中有两个b方法，具体如下
+
+```
+Classfile /Users/mipengcheng/IdeaProjects/JavaHamcrest/learn/build/classes/java/test/com/mpc/hamcrest/C.class
+  Last modified 2021-8-29; size 568 bytes
+  MD5 checksum 863b227ebd48874fbc4e581d32601a26
+  Compiled from "C.java"
+public class com.mpc.hamcrest.C extends com.mpc.hamcrest.B<java.lang.String>
+  minor version: 0
+  major version: 51
+  flags: ACC_PUBLIC, ACC_SUPER
+Constant pool:
+   #1 = Methodref          #5.#22         // com/mpc/hamcrest/B."<init>":()V
+   #2 = Class              #23            // java/lang/String
+   #3 = Methodref          #4.#24         // com/mpc/hamcrest/C.b:(Ljava/lang/String;)V
+   #4 = Class              #25            // com/mpc/hamcrest/C
+   #5 = Class              #26            // com/mpc/hamcrest/B
+   #6 = Utf8               <init>
+   #7 = Utf8               ()V
+   #8 = Utf8               Code
+   #9 = Utf8               LineNumberTable
+  #10 = Utf8               LocalVariableTable
+  #11 = Utf8               this
+  #12 = Utf8               Lcom/mpc/hamcrest/C;
+  #13 = Utf8               b
+  #14 = Utf8               (Ljava/lang/String;)V
+  #15 = Utf8               s
+  #16 = Utf8               Ljava/lang/String;
+  #17 = Utf8               (Ljava/lang/Object;)V
+  #18 = Utf8               Signature
+  #19 = Utf8               Lcom/mpc/hamcrest/B<Ljava/lang/String;>;
+  #20 = Utf8               SourceFile
+  #21 = Utf8               C.java
+  #22 = NameAndType        #6:#7          // "<init>":()V
+  #23 = Utf8               java/lang/String
+  #24 = NameAndType        #13:#14        // b:(Ljava/lang/String;)V
+  #25 = Utf8               com/mpc/hamcrest/C
+  #26 = Utf8               com/mpc/hamcrest/B
+{
+  public com.mpc.hamcrest.C();
+    descriptor: ()V
+    flags: ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #1                  // Method com/mpc/hamcrest/B."<init>":()V
+         4: return
+      LineNumberTable:
+        line 10: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Lcom/mpc/hamcrest/C;
+
+  public void b(java.lang.String);
+    descriptor: (Ljava/lang/String;)V
+    flags: ACC_PUBLIC
+    Code:
+      stack=0, locals=2, args_size=2
+         0: return
+      LineNumberTable:
+        line 15: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       1     0  this   Lcom/mpc/hamcrest/C;
+            0       1     1     s   Ljava/lang/String;
+
+  public void b(java.lang.Object);
+    descriptor: (Ljava/lang/Object;)V
+    flags: ACC_PUBLIC, ACC_BRIDGE, ACC_SYNTHETIC
+    Code:
+      stack=2, locals=2, args_size=2
+         0: aload_0
+         1: aload_1
+         2: checkcast     #2                  // class java/lang/String
+         5: invokevirtual #3                  // Method b:(Ljava/lang/String;)V
+         8: return
+      LineNumberTable:
+        line 10: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       9     0  this   Lcom/mpc/hamcrest/C;
+}
+Signature: #19                          // Lcom/mpc/hamcrest/B<Ljava/lang/String;>;
+SourceFile: "C.java"
+```
+
+有Object和String两种入参的b方法，而Object入参的会强制转换类型后调用String入参的方法。同时调用isSynthetic来判断发现Object入参的方法是jvm生成的。
+
+为什么会有这样的一个以Object为入参的方法出现呢？答案就在类B中，类B中的b方法会被泛型擦书为以Object为入参。
+
+这样来说真正的C要覆盖的方法是Object入参的b，所以jvm只能生成一个方法来覆盖，然后委托给真正的以String为入参的实现方法来实现功能。从而在多态的情况下，定义 B b = new C()的时候，调用b.b("x")能够成功的被调用。
