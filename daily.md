@@ -36,6 +36,33 @@ sudo vim /etc/synthetic.conf
 
 保存后重启电脑，根目录下就会出现data文件夹了。 data -> /Users/tal/data
 
+## brew切换镜像源
+
+```
+使用国内镜像源
+# 步骤一
+cd "$(brew --repo)"
+git remote set-url origin https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git
+
+# 步骤二
+cd "$(brew --repo)/Library/Taps/homebrew/homebrew-core"
+git remote set-url origin https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git
+
+#步骤三
+brew update
+
+还原
+cd "$(brew --repo)"
+git remote set-url origin https://github.com/Homebrew/brew.git
+ 
+cd "$(brew --repo)/Library/Taps/homebrew/homebrew-core"
+git remote set-url origin https://github.com/Homebrew/homebrew-core
+ 
+brew update
+```
+
+
+
 ## linux 命令收集
 
 ss -lnt  # 查看socket状态
