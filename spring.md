@@ -67,3 +67,21 @@ public class MyServlet extends HttpServlet {
 
 后面的可以覆盖前面的同名配置项。
 
+### springboot启动流程
+
+#### SpringApplication的运行方式
+
+（1）直接使用SpringApplication.run(..)
+
+（2）new SpringApplication() 然后设置各种参数，最后执行run
+
+（3)  new SpringApplicationBuilder() 可以使用fluent API来设置各种参数，最后执行run
+
+
+
+#### 准备阶段
+
+（1）配置 spring bean来源
+
+
+
