@@ -1,6 +1,6 @@
 # dailies
 
-## rpc超时设置
+## RPC超时设置
 
 作为客户端，如何实现超时？
 
@@ -8,7 +8,7 @@
 
 在future模式中会提供指定超时时间方法，在该方法中真正的请求在上述的异步执行中，而本线程会使用wait(超时时间)的方式进行阻塞。阻塞以后有两种方式被唤醒：
 
-（1）wait的时间到了，自我唤醒。那么此时一般是超时的，会判断一下结果是产出来返回是否超时。
+（1）wait的时间到了，自我唤醒。那么此时一般是超时的，会判断一下结果来返回是否超时。
 
 （2）被异步的执行唤醒（notify），这时一般会有有效的返回结果。此时会根据结果来判断是继续进行等待、返回结果等判断。
 
@@ -459,3 +459,91 @@ SourceFile: "C.java"
 三级缓存是为了判断循环依赖的时候，早期暴露出去已经被别人使用的bean和最终的bean是否是同一个bean，如果不是同一个则弹出异常，如果早期的对象没有被其他bean使用，而后期被修改了，不会产生异常。如果没有三级缓存，就无法判断是否有循环依赖，且早期的bean被循环依赖中的bean使用了。
 
 同时三级缓存缓存一个objectFactory，里边会调用getEarlyBeanReference，也就是通过这个修改早期返回的bean是哪个。这个实际使用的场景就是AOP。
+
+### spring mvc请求流程
+
+![alt](imgs/spring_mvc_process.png)
+
+### @EnableSpringMvc
+
+该注解会import DelegatingWebMvcConfiguration  --继承-->WebMvcConfigurationSupport(该类里边会默认注册很多bean到容器中)
+
+而 DelegatingWebMvcConfiguration (会将用户自己实现的所有WebMvcConfigurer保存在自己的列表中，然后在调用相应方法的时候循环调用所有的WebMvcConfigurer。
+
+### MVC常用注解
+
+@ModelAttribe("message") 作用在controller或者controllerAdvice中方法上，为所有的作用范围内的controller方法里的model添加属性。
+
+@RequestHeader("头属性") 作用在controller方法的参数上用来获取请求头信息。
+
+@CookieValue("cookie名")作用在controller方法参数上获取cookie信息。
+
+@ControllerAdvice controller上的统一切面，可以指定作用在哪些controller上。
+
+@ExceptionHandler 作用在controller或者controllerAdvice中的方法上，用来处理作用范围内的异常。
+
+## 故障排查
+
+## 查看进程内存信息 pmap
+
+pmap -x pid | sort -n -k3**
+
+## 跟踪类加载情况、内存回收情况、本地方法调用情况
+
+-verbose:class 查看类加载情况
+
+-verbose:gc 查看虚拟机中内存回收情况
+
+-verbose:jni 查看本地方法调用的情况
+
+## jmap的功能
+
+（1）jmap -heap pid  #查看某个pid的堆信息
+
+（2）jmap -dump:alive,format=b,file=xxxxx.hprof pid
+
+（3）jmap -clstatus 
+
+## NativeMemoryTracking
+
+-XX:NativeMemoryTracking=[off | summary | detail]
+
+#off: 默认关闭
+
+#summary:只统计各个分类的内存使用情况
+
+#detail:Collect memory usage by individual call sites;
+
+加了以上参数以后，可以使用下面的命令查看直接内存：
+
+jcmd \<pid> VM.native_memory [summary | detail | baseline | summary.diff | detial.diff | shutdown] [scale = KB | MB | GB]
+
+#summary: 分类内存使用情况
+
+#detail：详细内存使用情况，除了summary信息之外还包含了虚拟内存使用情况。
+
+#baseline：创建内存使用快照，方便和后面做对比
+
+#summary.diff：和上一次baseline的summary对比
+
+#detail.diff：和上一次baseline的detial对比
+
+#shutdown：关闭NMT
+
+```
+jcmd pid VM.native_memory detial scale=MB > temp.txt
+```
+
+ ## 数据库连接池
+
+```
+连接数 = (核心数 * 2) + 有效磁盘数
+
+核心数不应包含超线程(hyper thread)，即使打开了hyperthreading也是。如果活跃数据全部被缓存了，那么有效磁盘数是0，随着缓存命中率的下降，有效磁盘数逐渐趋近于实际的磁盘数。这一公式作用于SSD时的效果如何尚未有分析。
+```
+
+连接池的大小最终与系统特性相关。
+
+比如一个混合了长事务和短事务的系统，通常是任何连接池都难以进行调优的。最好的办法是创建两个连接池，一个服务于长事务，一个服务于短事务。
+
+再例如一个系统执行一个任务队列，只允许一定数量的任务同时执行，此时并发任务数应该去适应连接池连接数，而不是反过来。

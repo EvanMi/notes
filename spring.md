@@ -95,7 +95,7 @@ servelet的方式优先于reactive的方式。
 
 应用事件监听器保存在META-INF/spirng.factories中，通过SpringFacotoriesLoader来进行加载。
 
-### 运行阶段
+#### 运行阶段
 
 （1）加载“SpringApplication运行”监听器（SpringApplicationRunListener）
 
@@ -122,4 +122,21 @@ Web Servlet: AnnotationConfigServletWebServerApplicationContext StandardServletE
 （5）失败后的故障分析报告
 
 （6）回调 CommandLineRunner 、ApplicationRunner
+
+## ServletContainerInitializer
+
+在Servlet3.0标准的基础上Spring包装了自己的Initializer
+
+```
+@HandlesTypes(WebApplicationInitializer.class) ## 所有这个类型的class都会被识别
+SpringServletContainerInitializer implements ServletContainerInitializer
+
+在上面的基础上，spring有提供了一些封装
+编程驱动 AbstractDispatcherServletInitializer
+注解驱动 AbstractAnnotationConfigDispatcherServletIntializer
+springboot提供的扩展
+SpringBootServletInitializer
+```
+
+
 
