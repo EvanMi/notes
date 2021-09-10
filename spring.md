@@ -138,5 +138,33 @@ springboot提供的扩展
 SpringBootServletInitializer
 ```
 
+## springmvc
 
+### View视图协商
+
+![alt](imgs/springmvc_view_negotiation.png)
+
+客户端指定媒体类型例子：
+
+（1）Accept请求头  Accept:text/html
+
+（2）请求查询参数 /path?format=pdf
+
+（3）路径扩展名 /abc.pdf
+
+最佳匹配规则：
+
+（1）manager解析出所有的request中可用的mediaType
+
+（2）使用有所的ViewResolveer进行以及mediaType进行视图解析，获取到所有可用的View
+
+（3）最后根据匹配程度选取第一个符合的View
+
+## idea spring嵌入容器的无法定位modal中的webapp目录bug
+
+springboot中是通过DocumentRoot中的getCommonDocumentRoot来获取嵌入式容器的baseDir的。具体体现在
+
+TomcatServletWebServerFacotry中如果DocumentRoot为空，会定向docbase到一个临时目录。所以在idea中可以通过
+
+WebServerFactoryCustomizer  # addContextCustomizers(context -> {context.setDocBase("...")}) 来将路径指定到modal中。
 
