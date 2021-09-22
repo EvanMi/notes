@@ -6,6 +6,10 @@
 
 #### servlet注册
 
+-1、通过web.xml来进行注册
+
+0、通过ServletContext.add来进行注册，在ServletContextInitializer中会用到。
+
 1、@WebServlet + @ServletComponentScan
 
 2、@Bean 等方式注册为spring的原生
@@ -140,6 +144,10 @@ SpringBootServletInitializer
 
 ## springmvc
 
+### View 请求流程
+
+![alt](imgs/spring_mvc_process.png)
+
 ### View视图协商
 
 ![alt](imgs/springmvc_view_negotiation.png)
@@ -160,6 +168,54 @@ SpringBootServletInitializer
 
 （3）最后根据匹配程度选取第一个符合的View
 
+### Rest请求流程
+
+![alt](imgs/springmvc_rest_process.png)
+
+### Rest内容协商流程
+
+![alt](imgs/spring_mvc_rest_negotiation.png)
+
+
+
+### Rest中使用到的各种量
+
+#### 请求
+
+| 注解           | 说明                                 |
+| -------------- | ------------------------------------ |
+| @RequestParam  | 获取请求参数                         |
+| @RequestHeader | 获取请求头                           |
+| @CookieValue   | 获取Cookie值                         |
+| @RequestBody   | 获取完整请求主体内容                 |
+| @PathVariable  | 获取请求路径变量                     |
+| RequestEntity  | 获取请求内容（包括请求主体和请求头） |
+
+#### 相应
+
+| 注解           | 说明                             |
+| -------------- | -------------------------------- |
+| @ResponseBody  | 相应主体注解声明                 |
+| ResponseEntity | 相应内容（包括相应主体和响应头） |
+| ResponseCookie | 相应Cookie内容                   |
+
+#### 拦截
+
+| 注解                  | 说明                        |
+| --------------------- | --------------------------- |
+| @RestControllerAdvice | @RestController注解切面通知 |
+| HandlerInterceptor    | 处理方法拦截器              |
+
+#### 跨域
+
+| 注解                             | 说明             |
+| -------------------------------- | ---------------- |
+| @CrossOrigin                     | 资源跨域声明注解 |
+| CorsFilter                       | 资源跨域拦截器   |
+| WebMvcConfigurer#addCorsMappings | 注册资源跨域信息 |
+
+
+
 ## idea spring嵌入容器的无法定位modal中的webapp目录bug
 
 springboot中是通过DocumentRoot中的getCommonDocumentRoot来获取嵌入式容器的baseDir的。具体体现在
@@ -168,3 +224,30 @@ TomcatServletWebServerFacotry中如果DocumentRoot为空，会定向docbase到�
 
 WebServerFactoryCustomizer  # addContextCustomizers(context -> {context.setDocBase("...")}) 来将路径指定到modal中。
 
+## Servlet 核心API
+
+| 核心组件API                               | 说明                         | 起始版本 | SpringFramework代表实现           |
+| ----------------------------------------- | ---------------------------- | -------- | --------------------------------- |
+| javax.servlet.Servlet                     | 动态内容组件                 | 1.0      | DispatcherServlet                 |
+| javax.servlet.Filter                      | Servlet过滤器                | 2.3      | CharacterEncodingFilter           |
+| javax.servlet.ServletContext              | Servlet应用上下文            |          |                                   |
+| javax.servlet.AsyncContext                | 异步上下文                   | 3.0      | 无                                |
+| javax.servlet.ServletContextListener      | ServletContext生命周期监听器 | 2.3      | ContextLoaderListener             |
+| javax.servlet.ServletRequestListener      | ServletRequest生命周期监听器 | 2.3      | RequestContexyListener            |
+| javax.servlet.http.HttpSessionListener    | HttpSession生命周期监听器    | 2.3      | HttpSessionMutexListener          |
+| javax.servlet.AsyncListener               | 异步上下文监听器             | 3.0      | StandardServletAsyncWebRequest    |
+| javax.servlet.ServletContainerInitializer | Servlet容器初始化器          | 3.0      | SptingServletContainerInitializer |
+
+## dispatcherServlet层次
+
+HttpServlet
+
+​	HttpServletBean
+
+​			# init()方法中会读取配置并设置相关属性。
+
+​		FrameServlet
+
+​			在这里会初始化一个spring容器，并将父容器设置为spring容器。
+
+​			DispatcherServlet
