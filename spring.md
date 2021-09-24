@@ -12,7 +12,7 @@
 
 1、@WebServlet + @ServletComponentScan
 
-2、@Bean 等方式注册为spring的原生
+~~2、@Bean 等方式注册为spring的原生~~
 
 3、使用对应的RegistrationBean 例如 ServletRegistrationBean
 
@@ -251,3 +251,87 @@ HttpServlet
 ​			在这里会初始化一个spring容器，并将父容器设置为spring容器。
 
 ​			DispatcherServlet
+
+## springboot 嵌入式 Servlet容器限制
+
+### 容器限制
+
+（1）不支持 web.xml部署
+
+​		可以通过RegistrationBean 或 @Bean注解
+
+（2）不支持ServletContainerInitializer接口
+
+​		使用 ServletContextInitializer
+
+（3）注解驱动限制
+
+​		需要结合 @ServletComponentScan
+
+### springboot Servlet注册
+
+​	ServletContextInitializer
+
+​		RegistrationBean
+
+​			ServletListenerRegistrationBean
+
+​				@WebListener
+
+​			FilterRegistrationBean
+
+​				@WebFilter
+
+​			ServletRegistrationBean
+
+​				@WebServlet
+
+@ServletComponentScan扫描package -> @Web* -> RegistrationBean Bean定义 -> RegistartionBean Bean
+
+## 理解Reactive
+
+（1）维基百科
+
+```
+Reactive programming is a declarative programing paradigm concerned with data streams and the propagation of change.With this paradigm it is possible to express static(e.g. arrays) or dynamic(e.g. event emitters) data streams with ease, and also communicate that an inferred dependency within the associated execution model exists, which facilitates the automatic propagation of the changed data flow.
+```
+
+（2）The Reactive Manifesto
+
+```
+Reactive Systems are: Responsive, Resilient, Elastic and Message Driven.
+```
+
+（3）Spring Framework
+
+```
+The term "reactive" refers to programming models that are built around reacting to change--network component reacting to I/0 events, UI controller reacting to mouse events, etc. In that sense non-blocking is reactive because instead of being blocked we are now in the mode of reacting to notifications as operations complete or data becomes available.
+```
+
+（4）ReactiveX
+
+```
+ReactiveX extends the observer pattern to support sequences of data and/or events and adds operators that allow you to compose sequences together declaratively while abstracting away concerns about things like lowlevel threading, synchronization, thread-safety, concurrent data structures, and non-blocking I/O.
+```
+
+（5）Reactor
+
+```
+The reactor programming paradigm is often presented in object-oriented languages as an extension of the Observer design pattern. One can also compare the main reactive streams pattern with the familiar iterator design pattern, as there is a duality to the iterable-iterator pair in all of these libraries. One major difference is that,while an iterator is pull-based, reactive streams are push-based.
+```
+
+（6）@andrestaltz（著名作者)
+
+```
+In a way, this isn't anything new. Event buses or your typical click events are really an asynchronous event stream, on whitch you can observe and do some side effects. Reactive is that idea on steroids, You are able to create data streams of anything, not just from click and hover events. Streams are cheap and unbiquitous, anything can be a stream:variables, user inputs, properties, caches, data structures, etc.
+```
+
+### Recative Streams规范
+
+Reactive Streams is a standard and specification for Stream-oriented libraries for the JVM that
+
+- process a potentially unbounded number of elements
+- in sequence
+- asynchronously passing elements between components
+- with mandatory non-blocking backpressure
+

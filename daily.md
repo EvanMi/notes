@@ -594,3 +594,70 @@ ROW                   COLUMN+CELL
 （6）地吞吐量和网络小包的测试。有的时候，在地吞吐量的时候可能发生latency上升，比如tcp_nodelay的参数没有开启会导致latency上升，而网络小包会导致带宽用不满，也会导致性能上不去，所以，性能测试还需要根据实际情况有选择的测试一下这两个场景。
 
 （注：我们用第二步得到的吞吐量乘以66.7%来作为系统的软报警线，80%作为系统的硬报警线，而极限值仅仅用来抗突发的peak。）
+
+## Servlet3.1非阻塞例子
+
+![alt](imgs/servlet31_nio.png)
+
+
+
+https://www.programcreek.com/java-api-examples/?code=chenmudu%2FTomcat8-Source-Read%2FTomcat8-Source-Read-master%2Fapache-tomcat-8.5.49-src%2Ftest%2Forg%2Fapache%2Fcatalina%2Fnonblocking%2FTestNonBlockingAPI.java
+
+```java
+private class TestReadWriteListener implements ReadListener {
+        AsyncContext ctx;
+        private final StringBuilder body = new StringBuilder();
+
+        public TestReadWriteListener(AsyncContext ctx) {
+            this.ctx = ctx;
+        }
+
+        @Override
+        public void onDataAvailable() throws IOException {
+            ServletInputStream in = ctx.getRequest().getInputStream();
+            String s = "";
+            byte[] b = new byte[8192];
+            int read = 0;
+            do {
+                read = in.read(b);
+                if (read == -1) {
+                    break;
+                }
+                s += new String(b, 0, read);
+            } while (in.isReady());
+            log.info("Read [" + s + "]");
+            body.append(s);
+        }
+
+        @Override
+        public void onAllDataRead() throws IOException {
+            log.info("onAllDataRead");
+            ServletOutputStream output = ctx.getResponse().getOutputStream();
+            output.setWriteListener(new WriteListener() {
+                @Override
+                public void onWritePossible() throws IOException {
+                    ServletOutputStream output = ctx.getResponse().getOutputStream();
+                    if (output.isReady()) {
+                        log.info("Writing [" + body.toString() + "]");
+                        output.write(body.toString().getBytes("utf-8"));
+                    }
+                    ctx.complete();
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    log.info("ReadWriteListener.onError");
+                    throwable.printStackTrace();
+                }
+            });
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            log.info("ReadListener.onError");
+            throwable.printStackTrace();
+        }
+
+    }
+```
+
