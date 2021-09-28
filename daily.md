@@ -661,3 +661,200 @@ private class TestReadWriteListener implements ReadListener {
     }
 ```
 
+## ThreadPoolExecutor
+
+### 线程池中的锁
+
+线程池中有两个锁 mainLock 和 worker，其中mainLock用来保障方法的线程安全，而worker锁的作用如下：
+
+worker.new的时候就会有锁 <setState(-1)>
+
+在runWorker的时候会w.unlock()来允许中断，然后会加锁w.lock()来执行任务。
+
+shutdown的时候interruptWorker时会根据state>=0来判断现成是否启动了(初始-1， lock 1, unlock 0)
+
+interuptIdleWorkers方法会w.tryLock()来保证只清除没有活干的线程。
+
+## Redis
+
+### Simple Dynamic String
+
+![alt](imgs/redis_sds.png)
+
+## Tomcat
+
+### Tomcat线程模型
+
+![alt](imgs/tomcat_request_process.png)
+
+1.initServerSocket(),通过ServerSocketChannel.open()打开一个ServerSocket，默认绑定到8080端口，默认的连接等待队列长度为100，当超过100时会拒绝服务。我们可以通过在conf/server.xml中的Connector的acceptCount属性对其进行设置。
+
+2.createExecutor()用于创建Worker线程池。默认会启动10个Worker线程，Tomcat处理请求过程中，Worker最多不超过200个。我们可以通过配置conf/server.xml中的Connector的minSpareThreads 和 maxThreads 对这两个属性进行定制。
+
+3.Poller用于检测已经就绪的Socket，默认不超过2个线程，我们可以通过配置 pollerThreadCount 设置。
+
+4.Acceptor用于接收新的连接，默认1个线程，我们可以通过配置 acceptorThreadCount 对其进行设置。
+
+## Java基础
+
+### java并发
+
+#### AQS
+
+（1）AQS在唤醒的时候为什么从尾部向前？
+
+因为在入队的时候，插入tail是cas的，而next赋值并没有任何保护措施。所以前到后可能以为next字段为null而中断，而从后到前一定是成功的。
+
+### MethodHandle
+
+（1）例子
+
+```java
+public class Test {
+  public static void main(String[] args) throws Throwable  {
+    MethodHandles.Lookup lookup = MethodHandles.lookup();
+    MethodType mt = MethodType.methodType(String.class,char.class,char.class);
+    try {
+      MethodHandle mh = lookup.findVirtual(String.class,"replace", mt);
+      String handled_str = (String) mh.invoke("abc",'a','c');
+      System.out.print(handled_str);
+    } catch (NoSuchMethodException | IllegalAccessException e) {
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+
+
+## Mybatis
+
+1、获取mapper流程
+
+![alt](imgs/mybatis_get_mapper_process.png)
+
+2、Mapper接口和映射文件关联
+
+其实是SqlSessionFactoryBuilder
+
+\---------------
+
+​			|
+
+​			|
+
+![alt](imgs/mybatis_interface_xml_relation.png)
+
+3、sql执行流程
+
+（1）寻找sql
+
+![alt](imgs/mybatis_find_sql.png)
+
+(2) 执行sql
+
+![alt](imgs/mybatis_exec_sql.png)
+
+4、自定义typeHandler
+
+```java
+package com.lonelyWolf.mybatis.typeHandler;
+
+import org.apache.ibatis.type.BaseTypeHandler;
+import org.apache.ibatis.type.JdbcType;
+
+import java.sql.CallableStatement;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class MyTypeHandler extends BaseTypeHandler<String> {
+
+    @Override
+    public void setNonNullParameter(PreparedStatement preparedStatement, int index, String param, JdbcType jdbcType) throws SQLException {
+        System.out.println("自定义typeHandler生效了");
+        preparedStatement.setString(index,param);
+    }
+ /**通过一下sql进行使用
+ select user_id,user_name from lw_user where user_name=*#{userName,jdbcType=VARCHAR,typeHandler=com.lonelyWolf.mybatis.typeHandler.MyTypeHandler}
+ */
+```
+
+```java
+package com.lonelyWolf.mybatis.typeHandler;
+
+import org.apache.ibatis.type.BaseTypeHandler;
+import org.apache.ibatis.type.JdbcType;
+
+import java.sql.CallableStatement;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class MyTypeHandler extends BaseTypeHandler<String> {
+
+    /**
+     * 设置参数
+     */
+    @Override
+    public void setNonNullParameter(PreparedStatement preparedStatement, int index, String param, JdbcType jdbcType) throws SQLException {
+        System.out.println("设置参数->自定义typeHandler生效了");
+        preparedStatement.setString(index,param);
+    }
+    /**
+     * 根据列名获取结果
+     */
+    @Override
+    public String getNullableResult(ResultSet resultSet, String columnName) throws SQLException {
+        System.out.println("根据columnName获取结果->自定义typeHandler生效了");
+        return resultSet.getString(columnName);
+    }
+
+    /**
+     * 根据列的下标来获取结果
+     */
+    @Override
+    public String getNullableResult(ResultSet resultSet, int columnIndex) throws SQLException {
+        System.out.println("根据columnIndex获取结果->自定义typeHandler生效了");
+        return resultSet.getString(columnIndex);
+    }
+
+    /**
+     * 处理存储过程的结果集
+     */
+    @Override
+    public String getNullableResult(CallableStatement callableStatement, int columnIndex) throws SQLException {
+        return callableStatement.getString(columnIndex);
+    }
+}
+/**
+ <resultMap id="MyUserResultMap" type="lwUser">
+        <result column="user_id" property="userId" jdbcType="VARCHAR" typeHandler="com.lonelyWolf.mybatis.typeHandler.MyTypeHandler" />
+        <result column="user_name" property="userName" jdbcType="VARCHAR" />
+    </resultMap>
+
+<select id="listUserByUserName" parameterType="String" resultMap="MyUserResultMap">
+        select user_id,user_name from lw_user where user_name=#{userName,jdbcType=VARCHAR,typeHandler=com.lonelyWolf.mybatis.typeHandler.MyTypeHandler}
+    </select>
+*/
+```
+
+## 常见的位运算
+
+1、将x最右边的n位清零：x&(~0<<n)
+
+2、获取x的第n+1位值(0或者1)：(x>>n)&1
+
+3、获取x的第n位的幂值：x&(1<<(n-1))
+
+4、仅将第n位置为1：x|(1<<(n-1))
+
+5、仅将第n位置为0:  x&(~(1<<(n-1)))
+
+6、将x最高位至第n位（含）清零：x&((1<<n)-1)
+
+7、判断为偶数 (x&1)==0 判断为奇数 (x&1)==1
+
+8、清零最低位的1 x = x&(x-1)
+
+9、获取最低位的1 x = x&(-x)

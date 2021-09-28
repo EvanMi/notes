@@ -127,6 +127,12 @@ Web Servlet: AnnotationConfigServletWebServerApplicationContext StandardServletE
 
 （6）回调 CommandLineRunner 、ApplicationRunner
 
+### @ConfigurationProperties的使用方法
+
+（1）@EnableConfigurationProperties + @ConfigurationProperties
+
+（2）@Component + @ConfigurationProperties
+
 ## ServletContainerInitializer
 
 在Servlet3.0标准的基础上Spring包装了自己的Initializer
@@ -334,4 +340,8 @@ Reactive Streams is a standard and specification for Stream-oriented libraries f
 - in sequence
 - asynchronously passing elements between components
 - with mandatory non-blocking backpressure
+
+### webflux请求流程
+
+![alt](imgs/webflux_request_process.png)
 
