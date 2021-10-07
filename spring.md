@@ -47,6 +47,28 @@ public class MyServlet extends HttpServlet {
 
 ### 配置文件
 
+#### 自定义的时机
+
+在Spring Framework中应该在AbstractApplicationContext#prepareBeanfactory方法前。
+
+在SpringBoot中，应该在SpringApplication#refreshContext方法前。
+
+在Environment中会封装很多PropertySource
+
+#### 自定义外部化配置
+
+1、基于SpringApplicationRunListener#environmentPrepared
+
+2、基于ApplicationEnvironmentPreparedEvent扩展(有ApplicationRunListener的默认实现EventPublishingRunListener在environmentPrepared发出，通过自己在spring.factories中定义自己的事件监听器来获取相应的事件)
+
+3、基于EnvironmentPostProcessor扩展
+
+4、基于ApplicationContextIntializer扩展
+
+5、基于SpringApplicationRunListener#contextPropered扩展
+
+6、基于ApplicationPreparedEvent扩展(实现方式同2)
+
 #### 配置文件查找位置
 
 1、classpath 根路径
