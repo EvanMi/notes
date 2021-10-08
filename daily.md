@@ -695,6 +695,14 @@ interuptIdleWorkers方法会w.tryLock()来保证只清除没有活干的线程�
 
 4.Acceptor用于接收新的连接，默认1个线程，我们可以通过配置 acceptorThreadCount 对其进行设置。
 
+### Tomcat总体结构
+
+![alt](imgs/tomcat_components.png)
+
+
+
+
+
 ## Java基础
 
 ### java并发
@@ -876,3 +884,26 @@ public class MyTypeHandler extends BaseTypeHandler<String> {
 （5）估算某个对象每秒占用的内存，进而估算topK对象每秒占用内存
 
 （6）对上面的结果扩大10到20倍（根据系统的大小），计算出整个系统每秒占用的内存大小。
+
+### 垃圾回收
+
+#### MinorGC流程
+
+1、什么样的对象会进入到老年代？
+
+（1）在历次minorGC中一直存活到【-XX:MaxTenuringThreshold】【默认是16 最大也是16 因为只有4位】的对象进入到老年代中。
+
+（2）在minorGC后，如果年龄 1 2 ... n的对象占用的survivor区内存大小超过了50%，那么年龄在n+1 ... 的所有对象都进入到老年代中。
+
+（3）对象大小超过【-XX:PretenureSizeThreshold】的对象直接进入到老年代中。
+
+2、MinorGC流程
+
+![alt](imgs/minorGC_process.png)
+
+在上述的判断的两个Y的情况下，执行minorGC是又失败风险的【执行minorGC后的对象survivor区放不下】，这时如果老年代也放不下那么就会再执行一次fullGC。
+
+#### 垃圾收集器汇总
+
+![alt](imgs/jvm_gc_machines.png)
+
