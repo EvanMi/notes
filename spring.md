@@ -47,6 +47,16 @@ public class MyServlet extends HttpServlet {
 
 ### 配置文件
 
+#### 使用配置
+
+1、XML中使用$占位符 结合 PropertyPlaceholderConfigurer (spring时代) springboot时代就不需要PropertyPlaceholderConfigurer了，直接使用$占位符 + @ImportResource注解即可。
+
+2、@Value可以作用在field上，也可以使用在方法的参数上。
+
+3、通过Environment来获取,可以结合Binder来进行使用。
+
+4、@ConfigurationProperties 可以支持静态内部类中的属性嵌套赋值，可以支持spring自带的validation，配合 @Validated来实现。
+
 #### 配置文件查找位置
 
 1、classpath 根路径
