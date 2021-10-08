@@ -47,6 +47,7 @@ public class MyServlet extends HttpServlet {
 
 ### 配置文件
 
+<<<<<<< HEAD
 #### 使用配置
 
 1、XML中使用$占位符 结合 PropertyPlaceholderConfigurer (spring时代) springboot时代就不需要PropertyPlaceholderConfigurer了，直接使用$占位符 + @ImportResource注解即可。
@@ -56,6 +57,29 @@ public class MyServlet extends HttpServlet {
 3、通过Environment来获取,可以结合Binder来进行使用。
 
 4、@ConfigurationProperties 可以支持静态内部类中的属性嵌套赋值，可以支持spring自带的validation，配合 @Validated来实现。
+=======
+#### 自定义的时机
+
+在Spring Framework中应该在AbstractApplicationContext#prepareBeanfactory方法前。
+
+在SpringBoot中，应该在SpringApplication#refreshContext方法前。
+
+在Environment中会封装很多PropertySource
+
+#### 自定义外部化配置
+
+1、基于SpringApplicationRunListener#environmentPrepared
+
+2、基于ApplicationEnvironmentPreparedEvent扩展(有ApplicationRunListener的默认实现EventPublishingRunListener在environmentPrepared发出，通过自己在spring.factories中定义自己的事件监听器来获取相应的事件)
+
+3、基于EnvironmentPostProcessor扩展
+
+4、基于ApplicationContextIntializer扩展
+
+5、基于SpringApplicationRunListener#contextPropered扩展
+
+6、基于ApplicationPreparedEvent扩展(实现方式同2)
+>>>>>>> 08861094a8bf72021b888f0a478b569b891cdc2a
 
 #### 配置文件查找位置
 
