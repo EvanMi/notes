@@ -372,3 +372,43 @@ innodb_autoinc_lock_mode = 2 (interleaved lock mod)
 1. 执行 `insert` 语句，对要操作的页加 RW-X-LATCH，然后判断是否有和插入意向锁冲突的锁，如果有，加插入意向锁，进入锁等待；如果没有，直接写数据，不加任何锁，结束后释放 RW-X-LATCH；
 2. 执行 `select ... lock in share mode` 语句，对要操作的页加 RW-S-LATCH，如果页面上存在 RW-X-LATCH 会被阻塞，没有的话则判断记录上是否存在活跃的事务，如果存在，则为 `insert` 事务创建一个排他记录锁，并将自己加入到锁等待队列，最后也会释放 RW-S-LATCH；
 
+## mysql底层
+
+![alt](imgs/mysql_update_to_see_innoDB.png)
+
+redolog会在checkpoint机制的保护下永远先于bufferpool中对应的数据刷盘。
+
+1.redolog通常是物理日志，记录的是数据页的物理修改，而不是某一行或者某几行改成了什么样子，它用来恢复提交后的物理页。
+
+2.undolog用来回滚记录到某个版本。undolog一般是逻辑日志，根据每行记录进行记录。
+
+### 日志刷盘规则
+
+**1.发出commit动作时。已经说明过，commit发出后是否刷日志由变量 innodb_flush_log_at_trx_commit 控制。**
+
+**2.每秒刷一次。这个刷日志的频率由变量 innodb_flush_log_at_timeout 值决定，默认是1秒。要注意，这个刷日志频率和commit动作无关。**
+
+**3.当log buffer中已经使用的内存超过一半时。**
+
+**4.当有checkpoint时，checkpoint在一定程度上代表了刷到磁盘时日志所处的LSN位置。**
+
+### checkpoint
+
+innodb存储引擎中checkpoint分为两种：
+
+**在innodb中，数据刷盘的规则只有一个：checkpoint。**但是触发checkpoint的情况却有几种。不管怎样，checkpoint触发后，会将buffer中脏数据页和脏日志页都刷到磁盘。
+
+1.sharp checkpoint：在重用redo log文件(例如切换日志文件)的时候，将所有已记录到redo log中对应的脏数据刷到磁盘。
+
+2.fuzzy checkpoint：一次只刷一小部分的日志到磁盘，而非将所有脏日志刷盘。有以下几种情况会触发该检查点：
+
+（1）master thread checkpoint：由master线程控制，**每秒或每10秒**刷入一定比例的脏页到磁盘。
+
+（2）flush_lru_list checkpoint：从MySQL5.6开始可通过 innodb_page_cleaners 变量指定专门负责脏页刷盘的page cleaner线程的个数，该线程的目的是为了保证lru列表有可用的空闲页。
+
+（3）async/sync flush checkpoint：同步刷盘还是异步刷盘。例如还有非常多的脏页没刷到磁盘(非常多是多少，有比例控制)，这时候会选择同步刷到磁盘，但这很少出现；如果脏页不是很多，可以选择异步刷到磁盘，如果脏页很少，可以暂时不刷脏页到磁盘
+
+（4）dirty page too much checkpoint：脏页太多时强制触发检查点，目的是为了保证缓存有足够的空闲空间。too much的比例由变量 innodb_max_dirty_pages_pct 控制，MySQL 5.6默认的值为75，即当脏页占缓冲池的百分之75后，就强制刷一部分脏页到磁盘。
+
+参考：https://www.cnblogs.com/f-ck-need-u/archive/2018/05/08/9010872.html
+

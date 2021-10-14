@@ -377,3 +377,37 @@ Reactive Streams is a standard and specification for Stream-oriented libraries f
 
 ![alt](imgs/webflux_request_process.png)
 
+## spring aop 个中执行顺序
+
+```
+@Order(1)
+Aspect1 {...}
+
+@Oder(2)
+Aspect2 {...}
+```
+
+在以上请款下的执行顺序：
+
+Aspect1 : Around
+
+Aspect1 : Before
+
+Aspect2 : Around
+
+Aspect2 : Before
+
+被切入的方法本体执行
+
+Aspect2: Around
+
+Aspect2: After
+
+Aspect2: AfterReturning
+
+Aspect1 : Around
+
+Aspect1 : After
+
+Aspect1 : AfterReturning
+

@@ -534,7 +534,9 @@ jcmd \<pid> VM.native_memory [summary | detail | baseline | summary.diff | detia
 jcmd pid VM.native_memory detial scale=MB > temp.txt
 ```
 
- ## 数据库连接池
+## 数据库
+
+### 数据库连接池
 
 ```
 连接数 = (核心数 * 2) + 有效磁盘数
@@ -547,6 +549,10 @@ jcmd pid VM.native_memory detial scale=MB > temp.txt
 比如一个混合了长事务和短事务的系统，通常是任何连接池都难以进行调优的。最好的办法是创建两个连接池，一个服务于长事务，一个服务于短事务。
 
 再例如一个系统执行一个任务队列，只允许一定数量的任务同时执行，此时并发任务数应该去适应连接池连接数，而不是反过来。
+
+### mysql数据库客户端请求流程
+
+![alt](imgs/mysql_process.png)
 
 ## hase
 
@@ -907,3 +913,30 @@ public class MyTypeHandler extends BaseTypeHandler<String> {
 
 ![alt](imgs/jvm_gc_machines.png)
 
+##### Parnew垃圾收集器
+
+如何配置ParNewGC？使用-XX:+UseParNewGC。
+
+一旦指定了ParNewGC来及回收器之后，默认会设置与CPU核数一样的线程数。线程数不需要进行优化，但是如果一定要进行修改，那么可以采用-XX:ParallelGCThreads 来进行设置。
+
+##### CMS垃圾收集器
+
+CMS垃圾收集器分为一下几个步骤：
+
+（1）初始标记
+
+初始标记的时候系统是无法运行的，在这个阶段会识别当前系统中的所有的GCRoot。
+
+（2）并发标记
+
+在该阶段系统时可以运行的，在这个阶段会从上一个阶段中识别的GCRoot出发标记所有可达的存活的对象。
+
+（3）补偿标记
+
+在该阶段系统无法运行，在该阶段主要做的事情有两件。
+
+首先会将上一步过程中新生成的GCRoot识别出来并遍历所有的GCRoot；其次会识别上一步中的GCRoot中已经失效的，取消标记。
+
+（4）并发清理
+
+该阶段系统可以正常运行，会清理所有没有被标记的对象。
