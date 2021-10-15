@@ -376,8 +376,6 @@ innodb_autoinc_lock_mode = 2 (interleaved lock mod)
 
 ![alt](imgs/mysql_update_to_see_innoDB.png)
 
-redolog会在checkpoint机制的保护下永远先于bufferpool中对应的数据刷盘。
-
 1.redolog通常是物理日志，记录的是数据页的物理修改，而不是某一行或者某几行改成了什么样子，它用来恢复提交后的物理页。
 
 2.undolog用来回滚记录到某个版本。undolog一般是逻辑日志，根据每行记录进行记录。
@@ -398,6 +396,10 @@ innodb存储引擎中checkpoint分为两种：
 
 **在innodb中，数据刷盘的规则只有一个：checkpoint。**但是触发checkpoint的情况却有几种。不管怎样，checkpoint触发后，会将buffer中脏数据页和脏日志页都刷到磁盘。
 
+redolog会在checkpoint机制的保护下永远先于bufferpool中对应的数据刷盘。
+
+在触发checkpoint的时候，首先会将checkpoint前的脏数据都刷入到磁盘，然后在redolog中写入checkpoint。在恢复的时候，checkpoin前的数据是不会进行恢复的。另外，如果由于刷盘策略导致checkpoint没有刷盘，而checkpoint前的数据已经刷盘了，那么就会在redolog中进行重放这部分数据，而redolog是幂等的，所以也不会有问题。
+
 1.sharp checkpoint：在重用redo log文件(例如切换日志文件)的时候，将所有已记录到redo log中对应的脏数据刷到磁盘。
 
 2.fuzzy checkpoint：一次只刷一小部分的日志到磁盘，而非将所有脏日志刷盘。有以下几种情况会触发该检查点：
@@ -412,3 +414,6 @@ innodb存储引擎中checkpoint分为两种：
 
 参考：https://www.cnblogs.com/f-ck-need-u/archive/2018/05/08/9010872.html
 
+### binlog
+
+binlog是数据库服务器级别的日志文件和存储引擎无关。binlog的生成先于redolog。会在redolog中记录对应的binlog的文件名和便宜量来保持一致性。（可以从redolog恢复binlog，也可以从binlog恢复redolog）。
