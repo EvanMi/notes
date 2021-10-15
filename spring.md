@@ -163,6 +163,39 @@ Web Servlet: AnnotationConfigServletWebServerApplicationContext StandardServletE
 
 （1）@EnableConfigurationProperties + @ConfigurationProperties
 
+```
+@ConfigurationProperties(prefix = "service.properties")
+public class HelloServiceProperties {
+    private static final String SERVICE_NAME = "test-service";
+
+    private String msg = SERVICE_NAME;
+       set/get
+}
+
+
+@Configuration
+@EnableConfigurationProperties(HelloServiceProperties.class)
+@ConditionalOnClass(HelloService.class)
+@ConditionalOnProperty(prefix = "hello", value = "enable", matchIfMissing = true)
+public class HelloServiceAutoConfiguration {
+
+}
+
+@RestController
+public class ConfigurationPropertiesController {
+
+    @Autowired
+    private HelloServiceProperties helloServiceProperties;
+
+    @RequestMapping("/getObjectProperties")
+    public Object getObjectProperties () {
+        System.out.println(helloServiceProperties.getMsg());
+        return myConfigTest.getProperties();
+    }
+}
+
+```
+
 （2）@Component + @ConfigurationProperties
 
 ## ServletContainerInitializer
