@@ -444,3 +444,43 @@ Aspect1 : After
 
 Aspect1 : AfterReturning
 
+## Spring IOC
+
+IOC的作用其实类似于一种声明式的编程，我们声明了需要某个对象，然后由“数据源”来提供具体的对象，我们只管使用该对象来实现相应的功能即可。而在spring中spring框架就是一个“数据源”，通过依赖注入的方式将我们的声明替换为具体的对象。
+
+### 依赖注入 和 依赖查找
+
+IOC的实现方式很多，其中最常见的两种就是依赖注入和依赖查找。
+
+| 类型     | 依赖处理 | 实现便利性 | 代码侵入性   | API依赖性     | 可读性 |
+| -------- | -------- | ---------- | ------------ | ------------- | ------ |
+| 依赖查找 | 主动获取 | 相对繁琐   | 侵入业务逻辑 | 依赖容器API   | 良好   |
+| 依赖注入 | 被动提供 | 相对便利   | 低侵入性     | 不依赖容器API | 一般   |
+
+
+
+### 传统IoC容器的实现
+
+1、Java Beans作为IoC容器
+
+特性：依赖查找、生命周期管理、配置元信息、事件、自定义、资源管理、持久化
+
+内省(Introspector)是专门用来操作JavaBean属性的。不是所有的字段(Field)都能被称之为属性，只有某些字段具有getXXX或setXXX方法时才能称之为属性，当然要称为是一个Bean还需要有一个无惨的构造器，而内省就是对这些属性进行操作。
+
+```java
+Person p = new Person();
+BeanInfo beanInfo = Introspector.getBeanInfo(p.getClass());
+PropertyDescriptor[] pds = beanInfo.getPropertyDescriptors();
+        for(PropertyDescriptor pd:pds) {
+            System.out.println(pd.getName());
+            System.out.println(pd.getPropertyType());
+        }
+
+PropertyDescriptor pd = new PropertyDescriptor("age", Person.class);
+Person p = new Person();
+Method setAgeMethod = pd.getWriteMethod();
+setAgeMethod.invoke(p,25);
+Method getAgeMethod = pd.getReadMethod();
+System.out.println(getAgeMethod.invoke(p, null));
+```
+

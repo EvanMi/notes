@@ -237,6 +237,8 @@ PV(Page View) ：页面访问量，即页面浏览量或点击量，用户每次
 
 UV(Unique Visitor) : 独立访客，统计1天内访问某站点的用户数。
 
+IOPS：这个指的是机器的随机IO并发处理的能力，比如机器可以达到200IOPS，意思就是说每秒可以执行200个随机IO读写请求。
+
 ## Java Type
 
 1.ParameterizedType
@@ -891,6 +893,8 @@ public class MyTypeHandler extends BaseTypeHandler<String> {
 
 （6）对上面的结果扩大10到20倍（根据系统的大小），计算出整个系统每秒占用的内存大小。
 
+FullGC优化的前提是MinorGC的优化，MinorGCC的优化前提是合理分配内存空间，合理分配内存空间的前提是对系统运行期的内存使用模型进行预估。
+
 ### 垃圾回收
 
 #### MinorGC流程
@@ -920,6 +924,12 @@ public class MyTypeHandler extends BaseTypeHandler<String> {
 一旦指定了ParNewGC来及回收器之后，默认会设置与CPU核数一样的线程数。线程数不需要进行优化，但是如果一定要进行修改，那么可以采用-XX:ParallelGCThreads 来进行设置。
 
 ##### CMS垃圾收集器
+
+在使用CMS垃圾收集器的时候，MaxTenuringThreshold的值为6，而使用parallel的时候是15.
+
+其实是在不手动设置参数MaxTenuringThreshold/SurvivorRatio的情况下默认是6，但是你一旦手动的显式的设置了这两者中的任意一者，那么最大晋升年龄就会变成你手动设置的值/15.
+
+在CMS垃圾收集器的时候新生代的默认值是Min(max_heap/(newRation + 1),scaleForWordSize(young_gen_per_worker * parallel_gc_threads))
 
 CMS垃圾收集器分为一下几个步骤：
 
