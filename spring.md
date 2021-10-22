@@ -457,7 +457,66 @@ IOC的实现方式很多，其中最常见的两种就是依赖注入和依赖�
 | 依赖查找 | 主动获取 | 相对繁琐   | 侵入业务逻辑 | 依赖容器API   | 良好   |
 | 依赖注入 | 被动提供 | 相对便利   | 低侵入性     | 不依赖容器API | 一般   |
 
+(1)依赖查找
 
+按名称查找
+
+- 实时查找（通过id 来getBean)
+- 延迟查找（也就是把对象包装在objectFactory中，每次get都由objectFactory来延迟查找）
+
+按类型查找
+
+- 单个Bean对象
+- 集合Bean对象
+
+根据名称 + 类型进行查找
+
+根据java注解查找（在beanFactory中有对象的方法了）
+
+- 单个Bean对象
+- 集合Bean对象
+
+（2）依赖注入
+
+根据Bean名称注入
+
+根据Bean类型注入
+
+- 单个Bean对象
+- 集合Bean对象
+
+注入容器内建Bean对象
+
+注入非Bean对象
+
+注入类型
+
+- 实时注入
+- 延迟注入
+
+（3）依赖来源
+
+- 自定义Bean
+- 容器内建Bean（Spring注册的Bean）
+- 容器内建依赖（比如BeanFactory，通过getBean是无法获取到的）
+
+### 注册 Spring Bean
+
+- XMl配置元信息
+
+<bean name="..." ... />
+
+- Java注解配置元信息
+
+@Bean @Component @Import
+
+- Java API配置元信息
+
+命名方式 BeanDefinitionRegistry#registerBeanDefinition(String,BeanDefiniton)
+
+非命名方式 BeanDefinitonReaderUtils#registerWithGeneratedName(AbstractBeanDefinition, BeanDefinitionRegistry)
+
+配置方式 AnnotatedBeanDefinitionReader#gegister(Class...) 就是指定一个配置类
 
 ### 传统IoC容器的实现
 
@@ -483,4 +542,18 @@ setAgeMethod.invoke(p,25);
 Method getAgeMethod = pd.getReadMethod();
 System.out.println(getAgeMethod.invoke(p, null));
 ```
+
+### ApplicationContext
+
+ApplicationContext除了IoC容器角色，还有提供：
+
+- 面向切面(AOP)
+- 配置元信息(Configuration Metadata)
+- 资源管理(Resources)
+- 事件(Events)
+- 国际化(I18n)
+- 注解(Annoations)
+- Environment抽象(Environment Abstraction)
+
+
 
