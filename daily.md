@@ -303,6 +303,40 @@ ParameterizedType表示参数化类型，也就是泛型，例如List<T> Set<T>�
 
 例如 List<? super String> 返回 String
 
+## 泛型
+
+```java
+T[] t = null;
+t = (T[]) new Object[22];
+
+String[] str = null;
+str = (String[]) new Object[22];
+```
+
+其中t运行是成功的，而str的运行是失败的。为什么？因为泛型会被擦除，将一个Object数组转为T数组，实际并没有进行转换，依然是Object类型的，只是告诉编译器可以安全的按照T来使用而已。
+
+```java
+public class Test {
+
+    static <T> T[] toArray (T ... arr) {
+        T[] arr1 = arr;
+        return arr1;
+    }
+
+    static <T> T[] wrap(T a, T b) {
+        return toArray(a, b);
+    }
+
+
+
+    public static void main(String[] args) {
+        String[] wrap = wrap("a", "b");
+    }
+}
+```
+
+上面的方法是无法运行的，因为在调用toArray的时候是真的创建了一个Object数组，是无法转为String数组的。
+
 ## 泛型擦除
 
 泛型实参只会在类、字段及方法参数内保存其签名，无法通过反射动态获取泛型实例的具体实参。
@@ -887,11 +921,11 @@ public class MyTypeHandler extends BaseTypeHandler<String> {
 
 1、如何评估一个系统每秒内会产占用多大的内存
 
-（1）评估系统中创建较多的topK对象在一天内的创建数量
+（1）评估这一天内的有效时间（就是业务平凡发生的时间段）
 
-（2）评估这一天内的有效时间（就是业务平凡发生的时间段）
+（2）评估系统中创建较多的topK对象在有效时间内的创建数量
 
-（3）分别计算topK对象每秒产生的对象个数。
+（3）分别计算topK对象每秒产生的对象个数，进而推算出每个JVM每秒产生的对象个数。
 
 （4）根据每个对象的字段的大小估计每个对象所占用的内存
 
@@ -1024,4 +1058,8 @@ G1有一个参数 -XX:InitiatingHeapOccupancyPercent 默认值是45% 。 当老�
 6、回收失败时的Full GC
 
 如果在进行Mixed GC的时候，无论是年轻代还是老年代都基于复制算法进行回收，都要把各个Region的存活对象拷贝到别的Region里去，此时万一出现拷贝的过程中发现没有空闲的Region可以承载自己的存活对象了，就会触发一次失败。一旦失败，立马就会切换为停止系统程序，然后采用单线程进行标记、清理和压缩整理，空闲出来一批Region，这个过程是极慢的。
+
+7、新生代什么时候进行回收？
+
+G1会根据预设的gc停顿时间，给新生代分配一些Region，然后到一定程度就会触发gc，并且把gc时间控制在预设范围内，尽量避免一次性回收过多的Region导致gc停顿时间超出预期。
 
