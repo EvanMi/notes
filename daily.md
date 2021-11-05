@@ -602,7 +602,7 @@ jcmd pid VM.native_memory detial scale=MB > temp.txt
 
 hbase不存储数据，它的所有数据都存储在Hdfs上。Hdfs文件系统不支持对文件的随机读写，那么Hbase对数据的删除操作是怎么实现的呢？
 
-Hbase中删除记录并不是真正的删除了数据，而是防止了一个墓碑标记（tombstone marker），因为Hdfs不支持对文件的随机读写。被打上墓碑标记的记录在HFile合并时才会被真正的删除。
+Hbase中删除记录并不是真正的删除了数据，而是放置了一个墓碑标记（tombstone marker），因为Hdfs不支持对文件的随机读写。被打上墓碑标记的记录在HFile合并时才会被真正的删除。
 
 通过命令来验证
 

@@ -476,6 +476,74 @@ IOC的实现方式很多，其中最常见的两种就是依赖注入和依赖�
 - 单个Bean对象
 - 集合Bean对象
 
+细节：
+
+（1.1）单一类型依赖查找
+
+单一类型依赖查找接口-BeanFactory
+
+- 根据Bean名称查找
+  - getBean(String)
+  - spring 2.5 覆盖默认参数：getBean(String, Object...) 也就是覆盖构造方法里的参数
+- 根据Bean类型查找
+  - Bean实时查找
+    - spring 3.0 getBean(Class)
+    - spring4.1 覆盖默认参数：getBean(Class,Object...)也就是覆盖构造方法里的参数
+  - Spring5.1 Bean延迟查找 (使用ObjectProvider,其中ObjectProvider是继承ObjectFactory的)
+    - getBeanProvider(Class)
+    - getBeanProvider(ResolvableType)
+- 根据Bean名称 + 类型查找 : getBean(String, Class)
+
+（1.2）集合类型依赖查找
+
+- 集合类型依赖查找接口 -ListableBeanFactory
+  - 根据Bean类型查找
+    - 获取同类型Bean名称列表
+      - getBeanNamesForType(Class)
+      - Spring 4.2 getBeanNamesForType(ResolvableType)
+    - 获取同类型Bean实例列表
+      - getBeansOfTypes(Class)以及重载方法
+  - 通过注解类型查找
+    - Spring 3.0获取标注类型Bean名称列表
+      - getBeanNamesForAnnotation(Class<? extends Annotation>)
+    - Spring 3.0获取标注类型Bean实例列表
+      - getBeansWithAnnotation(Class<? extends Annotation>)
+    - Spring 3.0获取指定名称 + 标注类型Bean实例
+      - findAnnotationOnBean(String, Class<? extends Annotation>)
+
+（1.3）层次性依赖查找
+
+- 层次性依赖查找接口 -HierarchicalBeanFactory
+  - 双亲BeanFactory : getParentBeanFactory()
+  - 层次性查找
+    - 根据Bean名称查找
+      - 基于containsLocalBean 方法实现
+    - 根据Bean类型查找实例列表
+      - 单一类型：BeanFactoryUtils#beanOfType
+      - 集合类型：BeanFactoryUtils#beansOfTypeIncludingAncestors
+    - 根据Java注解查找名称列表
+      - BeanFactoryUtils#beanNamesForTypeIncludingAncestors
+
+(1.4) Bean延迟依赖查找接口
+
+- ObjectFactory
+- ObjectProvider
+  - Spring5对Java8特性扩展
+    - 函数式接口
+      - getIfAvailable(Supplier)
+      - ifAvailable(Consumer)
+    - Stream扩展 -stream()
+
+（1.5）内建可查找的依赖
+
+AbstractApplicationContext中可查找的：
+
+envirionment(外部化配置以及Profiles)、systemProperties(Java系统属性)、systemEnvironment(操作系统环境变量)、messageSource(国际化文案)、lifecycleProcessor(Lifecycle Bean处理器)、applicationEventMulticaster(Spring事件广播器)
+
+注解驱动时可查找的：
+
+ConfigurationClassPostProcessor、AutowireAnnotationBeanPostProcessor、CommonAnnotationBeanPostProcessor、EventListenerMethodProcessor、EventListenerFactory(@EventListener事件监听方法适配为ApplicationListener)
+
 （2）依赖注入
 
 根据Bean名称注入
@@ -493,6 +561,59 @@ IOC的实现方式很多，其中最常见的两种就是依赖注入和依赖�
 
 - 实时注入
 - 延迟注入
+
+(1.1)依赖注入的模式和类型
+
+手动模式 - 配置或者编程的方式，提前安排注入规则
+
+- XML资源配置元信息
+- Java注解配置元信息
+- API配置原信息
+
+自动模式 - 实现方提供依赖自动关联的方式，按照内建的注入规则
+
+- Autowiring（自动绑定）
+
+  | 模式        | 说明                                                         |
+  | ----------- | ------------------------------------------------------------ |
+  | no          | 默认值，未激活Autowiring，需要手动指定依赖注入对象           |
+  | byName      | 根据被注入属性的名称作为Bean名称进行依赖查找，并将对象设置到该属性 |
+  | byType      | 根据被注入属性的类型作为依赖类型进行查找，并将对象设置到该属性 |
+  | constructor | 特殊byType类型，用户构造器参数                               |
+
+明确的指定了属性值或者构造函数的值会覆盖掉自动配置的值，同时基本类型、String类型以及Class类型是无法自动注入的。
+
+注入类型：setter方法（<property name="user" ref="userBean"/>）、构造器(<constructor-arg name="user" ref="userBean"/>)、字段(@Autowired User user)、方法(@Autowired public void user(User user))、接口回调(class MyBean implements BeanFactoryAware{...})。
+
+- Setter 方法注入
+  - 手动模式
+    - XML资源配置元信息
+    - Java注解配置元信息
+    - API配置元信息
+  - 自动模式
+    - byName
+    - buType
+- 构造器注入
+  - 手动模式
+    - XML资源配置元信息
+    - Java注解配置元信息
+    - API配置元信息
+  - 自动模式
+    - constructor
+- 字段注入
+  - 手动模式
+    - java注解配置元信息
+      - @Autowired 不会处理静态字段
+      - @Resource
+      - @Inject(可选)
+- 方法注入
+  - 手动模式
+    - java注解配置元信息
+      - @Autowired
+      - @Resource
+      - @Inject(可选)
+      - @Bean
+- 
 
 （3）依赖来源
 
@@ -516,7 +637,67 @@ IOC的实现方式很多，其中最常见的两种就是依赖注入和依赖�
 
 非命名方式 BeanDefinitonReaderUtils#registerWithGeneratedName(AbstractBeanDefinition, BeanDefinitionRegistry)
 
-配置方式 AnnotatedBeanDefinitionReader#gegister(Class...) 就是指定一个配置类
+配置方式 AnnotatedBeanDefinitionReader#register(Class...) 就是指定一个配置类
+
+### 实例化 Spring Bean
+
+常规方式
+
+- 通过构造器（配置元信息：XML、Java注解和Java API）
+- 通过静态工厂方法（配置元信息：XML 和 Java API）
+- 通过Bean工厂方法（配置元信息：XML和Java API)
+- 通过FactoryBean（配置元信息：XML、Java注解和Java API）
+
+特殊方式
+
+- 通过ServiceLoaderFactoryBean（配置元信息：XML、Java注解和Java API）# 只能load一个
+
+- 通过ServiceListFactoryBean # 可以load多个
+
+- 通过AutowireCapableBeanFactory#createBean(java.lang.Class, int, boolean)
+
+  ```
+  applicationContext.getAutowireCapableBeanFactory();
+  ```
+
+- 通过BeanDefinitionRegistry#registerBeanDefinition(String, BeanDefition)
+
+### 初始化Spring Bean
+
+- @PostConstruct 标注方法
+
+- 实现InitializingBean接口的afterPropertiesSet()方法
+
+- 自定义初始化方法
+
+  XML配置：<bean init-method="init" ... />
+
+  Java注解: @Bean(initMethod="init")
+
+  Java API：AbstractBeanDefinition#setInitMethodName(String)
+
+执行顺序：从上倒下依次执行。
+
+### 延迟初始化 Spring Bean
+
+- XMl配置：<bean lazy-init="true" ... />
+- Java注解： @Lazy(true)
+
+### 销毁 Spring Bean
+
+- @PreDestroy 标注方法
+
+- 实现DisposableBean接口的destroy()方法
+
+- 自定义销毁方法
+
+  XML配置：<bean destroy = "destroy" ... />
+
+  Java注解：@Bean(destory="destroy")
+
+  Java API：AbstractBeanDefinition#serDestoryMethodName(String)
+
+执行顺序：从上到下一次执行。
 
 ### 传统IoC容器的实现
 

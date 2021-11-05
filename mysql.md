@@ -417,3 +417,8 @@ redolog会在checkpoint机制的保护下永远先于bufferpool中对应的数�
 ### binlog
 
 binlog是数据库服务器级别的日志文件和存储引擎无关。binlog的生成先于redolog。会在redolog中记录对应的binlog的文件名和便宜量来保持一致性。（可以从redolog恢复binlog，也可以从binlog恢复redolog）。
+
+### buffer pool
+
+![alt](imgs/mysql_buffer_pool.png)
+
