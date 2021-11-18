@@ -101,6 +101,10 @@ public class MyServlet extends HttpServlet {
 
 4、引用的外部jar包的application-{profile}.properties 和 application-{profile}.yml
 
+```undefined
+yml > yaml > properties 后边的会覆盖前面的
+```
+
 后面的可以覆盖前面的同名配置项。
 
 ### springboot启动流程
@@ -586,6 +590,7 @@ ConfigurationClassPostProcessor、AutowireAnnotationBeanPostProcessor、CommonAn
 注入类型：setter方法（<property name="user" ref="userBean"/>）、构造器(<constructor-arg name="user" ref="userBean"/>)、字段(@Autowired User user)、方法(@Autowired public void user(User user))、接口回调(class MyBean implements BeanFactoryAware{...})。
 
 - Setter 方法注入
+
   - 手动模式
     - XML资源配置元信息
     - Java注解配置元信息
@@ -593,33 +598,132 @@ ConfigurationClassPostProcessor、AutowireAnnotationBeanPostProcessor、CommonAn
   - 自动模式
     - byName
     - buType
+
 - 构造器注入
+
   - 手动模式
     - XML资源配置元信息
     - Java注解配置元信息
     - API配置元信息
   - 自动模式
     - constructor
+
 - 字段注入
+
   - 手动模式
     - java注解配置元信息
       - @Autowired 不会处理静态字段
       - @Resource
       - @Inject(可选)
+
 - 方法注入
+
   - 手动模式
     - java注解配置元信息
       - @Autowired
       - @Resource
       - @Inject(可选)
       - @Bean
-- 
+
+- 接口回调注入
+
+  - 自动模式
+
+    | 内建接口                       | 说明                                              |
+    | ------------------------------ | ------------------------------------------------- |
+    | BeanFactoryAware               | 获取Ioc容器-BeanFactory                           |
+    | ApplicationContextAware        | 获取Spring应用上下文 - ApplicationContext对象     |
+    | EnvironmentAware               | 获取Environment对象                               |
+    | ResourceLoaderAware            | 获取加载当前Bean Class的ClassLoader               |
+    | BeanNameAware                  | 获取当前Bean的名称                                |
+    | MessageSourceAware             | 获取MessageSource对象，用户spring国际化           |
+    | ApplicationEventPublisherAware | 获取ApplicationEventPublisher对象，用于Spring事件 |
+    | EmbeddedValueResolverAware     | 获取StringValueResolver对象，用户占位符处理       |
+
 
 （3）依赖来源
 
 - 自定义Bean
+- 单例对象作为依赖来源 （要素 来源：外部普通Java对象。注册：SingletonBeanRegistry#registerSingleton     限制 无生命周期管理、无法实现延迟初始化Bean）
 - 容器内建Bean（Spring注册的Bean）
-- 容器内建依赖（比如BeanFactory，通过getBean是无法获取到的）
+- 容器内建依赖（比如BeanFactory，通过getBean是无法获取到的 无生命周期管理 无法实现延迟初始化Bean 无法通过依赖查找）(beanFactory.registerResolvableDependency(..))
+- 外部化配置作为依赖来源
+
+#### 通用注解 CommonAnnotationBeanPostProcessor
+
+- 注入注解
+  - javax.xml.ws.WebServiceRef
+  - javax.ejb.EJB
+  - javax.annotation.Resource
+- 生命周期注解
+  - javax.annotation.PostConstruct
+  - javax.annotation.PreDestroy
+
+#### AutowireAnnotationBeanPostProcessor
+
+该后置处理器会处理 @Autowired @Value 和 @Inject注解，其中@Inject需要引入相应的包后生效。
+
+#### 自定义依赖注入注解
+
+- 基于AutowiredAnnotationBeanPostProcessor实现
+
+(1) 自定义一个注解，标注@Autowired元注解
+
+(2)完全自定义注解
+
+```java
+@Bean
+@Oreder(放在默认的AutowiredAnnotationBeanPostProcessor之前一般比较好)
+//这个static的作用可以让bean的注册不依赖对象，能够提前创建Bean
+public static AutowiredAnnotationBeanPostProcessor {
+  AutowiredAnnoatationBeanPostProcessor pp = new AutowiredAnnotationBeanPostProcessor();
+  pp.setAutowiredAnnotationType(InjectedUser.class);
+  return pp;
+}
+```
+
+
+
+- 自定义实现
+  - 生命周期处理
+    - InstantiationAwareBeanPostProcessor
+    - MergedBeanDefinitionPostProcessor
+  - 元数据
+    - InjectedElement
+    - InjectedMetadata
+
+#### @Qualifier
+
+- 通过qualifier来指定要注入的bean的名称
+
+- 在编码时指定了@Qualifier和为指定@Qualifier的回被分为两组，然后可以自定义注解并在自定义的注解上标注@Qualifier，然后可以通过在编码时指定自定义的注解，来将指定了自定义注解和未指定自定义注解的Bean分为两组。
+
+  ```java
+  @Qualifier 
+  public @interface UserGroup {}
+  
+  
+  @UserGroup
+  @Bean
+  public User user1() {}
+  
+  
+  @UserGroup
+  @Bean
+  public User user2() {}
+  
+  
+  
+  @Bean
+  public User user3() {}
+  
+  @Qualifier
+  @Bean
+  public User user4()
+  
+  ```
+
+  结果分析：user3是一个分组，user1,user2属于UserGroup组，user1,user2,user4属于Qualifier组。
 
 ### 注册 Spring Bean
 
@@ -738,3 +842,20 @@ ApplicationContext除了IoC容器角色，还有提供：
 
 
 
+### spring bean作用域
+
+| 来源        | 说明                                                   |
+| ----------- | ------------------------------------------------------ |
+| singleton   | 默认spring bean作用域，一个BeanFactory有且仅有一个实例 |
+| prototype   | 原型作用域，每次依赖查找和依赖注入生成新Bean对象       |
+| request     | 将Spring Bean存储在ServletRequest上下文中              |
+| session     | 将Spring Bean存储在HttpSession中                       |
+| application | 将Spring Bean存储在ServletContext中                    |
+
+无论是singleton还是prototype都是执行初始化方法，但是只有singleton会调用摧毁方法。
+
+自定义Bean作用域
+
+（1）实现Scope(org.springframework.beans.factory.config.Scope)
+
+（2）注册Scope(org.springframework.beans.factory.config.ConfigurableBeanFactroy#registerScope)

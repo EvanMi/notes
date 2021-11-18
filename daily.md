@@ -935,6 +935,34 @@ public class MyTypeHandler extends BaseTypeHandler<String> {
 
 FullGC优化的前提是MinorGC的优化，MinorGCC的优化前提是合理分配内存空间，合理分配内存空间的前提是对系统运行期的内存使用模型进行预估。
 
+2、GC日志内容
+
+主要包含三部分：Jvm系统参数、垃圾收集信息、堆内存使用情况。
+
+### 常用参数
+
+-XX:NewSize=5242880
+
+-XX:MaxNewSize=5242880
+
+-XX:IntialHeapSize=10485760
+
+-XX:MaxHeapSize=10485760
+
+-XX:SurvivoRatio=8
+
+-XX:PretenureSizeThreshold=10486760
+
+-XX:+UseParnewGC
+
+-XX:+UseConcMarkSweapGC
+
+-XX:+PrintGCDetails   打印详细的gc日志
+
+-XX:+PrintGCTimeStamps 打印每次GC发生的时间
+
+-Xloggc:gc.log	将gc日志写入一个磁盘文件
+
 ### 垃圾回收
 
 #### MinorGC流程
@@ -1062,4 +1090,101 @@ G1有一个参数 -XX:InitiatingHeapOccupancyPercent 默认值是45% 。 当老�
 7、新生代什么时候进行回收？
 
 G1会根据预设的gc停顿时间，给新生代分配一些Region，然后到一定程度就会触发gc，并且把gc时间控制在预设范围内，尽量避免一次性回收过多的Region导致gc停顿时间超出预期。
+
+##### 垃圾收集常用命令
+
+jstat
+
+```sh
+Metaspace由Klass Metaspace和NoKlass Metaspace两部分组成
+jstat -gc pid
+S0C    S1C    S0U    S1U      EC       EU        OC         OU       MC     MU    
+s0大小  s1大小 s0用量  s1用量 eden区大小 eden区用量 老年代大小 老年代用量 meta区大小 meta区用量
+CCSC   CCSU       YGC           YGCT         FGC          FGCT         GCT
+类区空间 类区用量    younggc次数   younggc时间   fullgc次数    fullgc时间		gc总耗时
+
+jstat -gccapacity pid
+ NGCMN(新生代初始容量)    NGCMX(新生代最大容量)     NGC(当前新生代容量)     S0C(s0容量)   S1C(s1容量)       EC(eden容量)      OGCMN(老年代初始容量)      OGCMX(老年代最大容量)       OGC(老年代当前容量)         OC(老年空间当前容量)       MCMN(元数据初始容量)     MCMX(元数据区最大容量)      MC(元数据区当前容量)     CCSMN(类空间初始容量)    CCSMX(类控件最大容量)     CCSC(类空间当前容量)    YGC(年轻代gc次数)    FGC(full gc次数)
+ 
+jstat -gcnew pid
+S0C(s0容量)    S1C(s1容量)    S0U(s0用量)    S1U(s1用量)   TT(实际对象进去老年代的年龄) MTT(设置的进入老年代的最大年龄)  DSS(期望的幸存区大小)      EC(eden区的小)       EU(eden区用量)     YGC(young gc 次数)     YGCT(young gc 时间)
+
+jstat -gcnewcapacity pid
+NGCMN(新生代初始容量)      NGCMX(新生代最大容量)       NGC(新生代当前容量)      S0CMX(s0最大容量)     S0C(s0当前容量)     S1CMX(s1最大容量)     S1C(s1最大容量)       ECMX(eden区最大容量)        EC(eden区当前容量)      YGC(young gc 次数)   FGC(full gc 次数)
+
+jstat -gcold pid
+MC(元数据容量)       MU(元数据用量)      CCSC(类空间容量)     CCSU(类空间用量)       OC(老年代空间容量)          OU(老年代空间用量)       YGC(young gc 次数)    FGC(full gc 次数)    FGCT(full 时间)     GCT(gc时间)
+
+jstat -gcoldcapacity pid
+OGCMN(老年代初始大小)       OGCMX(老年代最大大小)       OGC(老年代当前大小)         OC(老年代空间大小)       YGC(young gc 次数)   FGC(full gc 次数)    FGCT(full gc 时间)     GCT(gc 时间)
+
+jstat -gcmetacapacity pid
+MCMN(元空间初始大小)      MCMX(元空间最大)        MC(元空间当前)       CCSMN(类空间初始大小)      CCSMX(类空间最大大小)       CCSC(类空间当前大小)     YGC(young gc 次数)   FGC(full gc 次数)    FGCT(full gc 时间)     GCT(gc 时间)
+
+jstat -class pid
+Loaded(加载类数量)  Bytes(加载类大小)  Unloaded(卸载类数量)  Bytes(卸载类大小)     Time(加载和卸载用的总时间)
+
+jstat -compiler pid
+Compiled(执行了多少次编译) Failed(失败数) Invalid(无效的)   Time(花费时间)   FailedType(最后一次编译失败的类型) FailedMethod(最后一次编译失败的方法)
+
+jstat -gccause pid
+S0     S1     E      O      M     CCS    YGC     YGCT    FGC    FGCT     GCT    LGCC  GCC
+
+jstat -gcutil pid
+S0     S1     E      O      M     CCS    YGC     YGCT    FGC    FGCT     GCT
+
+jstat -gc pid 1000 10 #每秒打印一次gc日志，一共打印10次
+```
+
+jmap
+
+```shell
+jmap -heap pid
+会打印出来堆内存相关的一些参数设置，然后就是当前的堆内存里的一些基本各个区域的情况。
+jmap -histo pid
+会按照各种对象占用内存空间的大小降序排列，把占用内存最多的对象放在最上面。
+jmap -dump:live,format=b,file=dump.hprof pid
+可以导出堆内存快照。然后可以使用jhat进行分析(jhat dump.hprof -port 7000)，也可以使用其他工具进行分析。
+```
+
+##### 垃圾收集实战
+
+```java
+/**
+ * @author ：mipengcheng3
+ * @date ：Created in 2021/11/18 上午10:20
+ * @description：一个所谓的bi系统的gc模拟
+ * 配合运行的jvm参数
+ * -XX:NewSize=104857600 -XX:MaxNewSize=104857600 -XX:InitialHeapSize=209715200 -XX:MaxHeapSize=209715200 -XX:SurvivorRatio=8 -XX:PretenureSizeThreshold=3145728 -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:MaxTenuringThreshold=15 -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:gc.log
+ */
+public class BiSystemGcTest {
+    /**
+     * main方法，用来模拟gc
+     * @param args 没有任何的args
+     * @throws InterruptedException 当线程被打断的时候会抛出
+     */
+    public static void main(String[] args) throws InterruptedException {
+        //给一个机会运行 jstat -gc pid 1000 1000(没1秒打印一下gc情况，运行1000次)
+        Thread.sleep(20000);
+        while (true) {
+            loadData();
+        }
+    }
+
+    /**
+     * 模拟每秒的并发量为50并且加载的数据量大小为100KB
+     * @throws InterruptedException 当线程在sleep的时候被打断时会抛出
+     */
+    private static void loadData() throws InterruptedException {
+       byte[] data = null;
+       for (int i = 0; i < 50; i++) {
+           data = new byte[100 * 1024];
+       }
+       data = null;
+       Thread.sleep(1000);
+    }
+}
+```
+
+
 
