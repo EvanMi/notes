@@ -859,3 +859,12 @@ ApplicationContext除了IoC容器角色，还有提供：
 （1）实现Scope(org.springframework.beans.factory.config.Scope)
 
 （2）注册Scope(org.springframework.beans.factory.config.ConfigurableBeanFactroy#registerScope)
+
+### SpringBean生命周期
+
+目录图：
+
+元信息加载 -> 元信息解析 -> spring bean注册阶段 -> 合并bean definition -> 加载bean class -> postProcessBeforeInstantiant -> 
+
+
+

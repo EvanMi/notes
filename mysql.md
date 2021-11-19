@@ -422,3 +422,7 @@ binlog是数据库服务器级别的日志文件和存储引擎无关。binlog�
 
 ![alt](imgs/mysql_buffer_pool.png)
 
+### 数据行物理存储
+
+![alt](imgs/mysql_row_formmat.png)
+
