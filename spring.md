@@ -864,7 +864,4 @@ ApplicationContext除了IoC容器角色，还有提供：
 
 目录图：
 
-元信息加载 -> 元信息解析 -> spring bean注册阶段 -> 合并bean definition -> 加载bean class -> postProcessBeforeInstantiant -> 
-
-
-
+元信息加载 -> 元信息解析 -> spring bean注册阶段 -> 合并bean definition -> 加载bean class -> postProcessBeforeInstantiant -> determineCondidateConstructors -> postProcessMergedBeanDefinition -> getEarlyBeanReference -> postProcessAfterInstantiation -> postProcessPropertyValues -> Aware相关回调 ->  postProcessBeforeInitialization(包括@PostContruct注解) -> 执行初始化方法(先执行InitializingBean接口，然后执行自定义的init方法)-> postProcessAfterInitialization -> SmartInitializingSingleton#afterSingletonsInstantiated(单例对象完成初始化会进行回调，从4.1版本开始) -> DestructionAwareBeanPostProcessor#postProcessBeforeDestruction

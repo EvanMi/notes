@@ -1015,7 +1015,7 @@ jvm 通过写屏障（write barrier）来实现监控程序线程对引用的修
 
 ```D
 从gc日志进行分析
-  21.393: [CMS-concurrent-mark-start]
+21.393: [CMS-concurrent-mark-start]
 21.393: [CMS-concurrent-mark: 0.000/0.000 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] 
 21.393: [CMS-concurrent-preclean-start]
 21.393: [CMS-concurrent-preclean: 0.000/0.000 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] 
@@ -1233,4 +1233,47 @@ public class BiSystemGcTest {
 ```
 
 
+
+## 一些新兴的软件工具
+
+### mybatis-mate
+
+主要功能：字典绑定、字段加密、数据脱敏、表结构动态维护、数据审计记录、数据范围（数据权限）、数据库分库分表 动态数据源 读写分离 数据库健康检查自动切换。
+
+```xml
+<dependency>
+	<groupId>com.baomidou</groupId>
+	<artifactId>mybatis-mate-starter</artifactId>
+	<version>1.0.8</version>
+</dependency>
+<dependency>
+	<gourpId>com.baomidou</gourpId>
+  <artifactId>mybatis-mate-annotation</artifactId>
+  <version>1.0.8</version>
+</dependency>
+```
+
+## bean searcher
+
+主要功能：用于进行列表检索。快速实现数据的查询。把很多功能都通过入参来进行控制了，不用写代码，但是需要写参数了。
+
+```xml
+<dependency>
+	<groupId>com.ejlchina</groupId>
+  <artifactId>bean-searcher-boot-starter</artifactId>
+  <version>3.0.1</version>
+</dependency>
+```
+
+## **[retrofit-spring-boot-starter](https://gitee.com/lianjiatech/retrofit-spring-boot-starter)**
+
+主要功能：一个好用的http请求封装工具。
+
+```xml
+<dependency>
+	<groupId>com.github.lianjiatech</groupId>
+	<artifactId>retrofit-spring-boot-starter</artifactId>
+	<version>2.2.16</version>
+</dependency>
+```
 
