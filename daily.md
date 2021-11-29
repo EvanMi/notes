@@ -1232,6 +1232,67 @@ public class BiSystemGcTest {
 }
 ```
 
+```java
+package com.jd.http.base.gc;
+
+/**
+ * @author ：mipengcheng3
+ * @date ：Created in 2021/11/19 上午10:12
+ * @description：模拟的计算系统的Full gc场景
+ * 有问题的gc参数
+ * -XX:NewSize=104857600 -XX:MaxNewSize=104857600 -XX:InitialHeapSize=209715200 -XX:MaxHeapSize=209715200 -XX:SurvivorRatio=8 -XX:PretenureSizeThreshold=20971520 -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:MaxTenuringThreshold=15 -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:gc.log
+ * 优化后的gc参数
+ * -XX:NewSize=209715200 -XX:MaxNewSize=209715200 -XX:InitialHeapSize=314572800 -XX:MaxHeapSize=314572800 -XX:SurvivorRatio=2 -XX:PretenureSizeThreshold=20971520 -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:MaxTenuringThreshold=15 -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:gc.log
+ */
+
+
+/**
+ * 4C8G场景下的GC模板
+ * -Xms4096M -Xmx4096M -Xmn3072M -Xss1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseParNewGC -XX:+UseConcMarkSweepGC
+ * -XX:CMSInitiatingOccupancyFaction=92 -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0
+ * -XX:+CMSParallelInitialMarkEnabled -XX:+CMSScavengeBeforeRemark
+ * */
+public class CalFullGcTest {
+    public static void main(String[] args) throws InterruptedException {
+        Thread.sleep(20000);
+        while (true) {
+            loadData();
+        }
+    }
+
+    /**
+     * a fake load data
+     * @throws InterruptedException if the thread is interrupted
+     */
+    private static void loadData() throws InterruptedException {
+        byte[] data = null;
+        for (int i = 0; i < 4; i++) {
+            data = new byte[10 * 1024 * 1024];
+        }
+        data = null;
+
+        byte[] data1 = new byte[10 * 1024 * 1024];
+        byte[] data2 = new byte[10 * 1024 * 1024];
+
+        byte[] data3 = new byte[10 * 1024 * 1024];
+        data3 = new byte[10 * 1024 * 1024];
+
+        Thread.sleep(1000);
+    }
+}
+
+```
+
+
+
+```D
+两个JVM参数 -XX:TraceClassLoading -XX:TraceCalssUnloading 可以在日志中看到类的加载和卸载日志
+
+java通过反射创建的类都是 软引用，而软引用在回收的时候有一个判定公式 clock-timestamp <= freespace * SoftRefLRUPolicyMSPerMB 
+  （软引用未被访问的时间长度 <= jvm空间的MB数 * 每MB能提供的时间）
+ 
+```
+
 
 
 ## 一些新兴的软件工具
