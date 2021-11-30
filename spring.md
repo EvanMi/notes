@@ -865,3 +865,81 @@ ApplicationContext除了IoC容器角色，还有提供：
 目录图：
 
 元信息加载 -> 元信息解析 -> spring bean注册阶段 -> 合并bean definition -> 加载bean class -> postProcessBeforeInstantiant -> determineCondidateConstructors -> postProcessMergedBeanDefinition -> getEarlyBeanReference -> postProcessAfterInstantiation -> postProcessPropertyValues -> Aware相关回调 ->  postProcessBeforeInitialization(包括@PostContruct注解) -> 执行初始化方法(先执行InitializingBean接口，然后执行自定义的init方法)-> postProcessAfterInitialization -> SmartInitializingSingleton#afterSingletonsInstantiated(单例对象完成初始化会进行回调，从4.1版本开始) -> DestructionAwareBeanPostProcessor#postProcessBeforeDestruction
+
+### Spring配置元信息
+
+- 配置元信息
+
+  - Spring Bean 配置元信息 - BeanDefinition
+
+    - GenericBeanDefinition：通用型 BeanDefinition
+    - RootBeanDefinition：无Parent的BeanDefinition或者合并后BeanDefinition
+    - AnnotatedBeanDefinition：注解标注的BeanDefinition
+
+  - Spring Bean 属性元信息 - PropertyValues
+
+    - 可修改实现 - MutablePropertyValues
+    - 元素成员 - PropertyValue
+    - Bean属性上下文存储 - AttributeAccessor （BeanDefinition继承了该接口，提供了一些附加信息保存的能力）
+    - Bean元信息元素 - BeanMetadataElement （setSource 标志bean的来源）
+
+  - Spring 容器配置元信息
+
+    - Spring XML 配置元信息 - beans元素相关
+
+      | beans元素属性               | 默认值     | 使用场景                                                     |
+      | --------------------------- | ---------- | ------------------------------------------------------------ |
+      | profile                     | null(留空) | Spring Profiles配置值                                        |
+      | default-lazy-init           | default    | 都outter beans "deafult-lazy-init" 属性存在时，继承该值，否则为”false" |
+      | default-merge               | default    | 当outter beans "default-merge" 属性存在时，继承该值，否则为"false" |
+      | default-autowire            | default    | 当outter beans “default-autowire”属性存在时，继承该值，否则为“no” |
+      | default-autowire-candidates | null(留空) | 默认Spring Beans名称pattern                                  |
+      | default-init-method         | null(留空) | 默认Spring Beans自定义初始化方法                             |
+      | default-destroy-method      | null(留空) | 默认Spring Beans自定义销毁方法                               |
+
+      
+
+    - Spring XML 配置元信息 - 应用上下文相关
+
+      | XML元素                          | 使用场景                             |
+      | -------------------------------- | ------------------------------------ |
+      | \<context:annotation-config/>    | 激活spring注解驱动                   |
+      | \<context:component-scan/>       | Spring @Component 以及自定义注解扫描 |
+      | \<context:load-time-weaver/>     | 激活Spring LoadTimeVeaver            |
+      | \<context:mbean-export/>         | 暴露Spring Beans 作为 JMX Beans      |
+      | \<context:mbean-server/>         | 将当前平台作为MBeanServer            |
+      | \<context:property-placeholder/> | 加载外部配置资源作为Spring属性配置   |
+      | \<context:property-override/>    | 利用外部化配置资源覆盖Spring属性值   |
+
+      
+
+    - Beans
+
+      | XML元素          | 使用场景                                   |
+      | ---------------- | ------------------------------------------ |
+      | \<beans:beans/>  | 单XML资源下的多个Spring Beans配置          |
+      | \<beans:bean/>   | 单个Spring Bean定义(BeanDefinition)配置    |
+      | \<beans:alias/>  | 为Spring Bean定义（BeanDefinition)映射别名 |
+      | \<beans:import/> | 加载外部Spring XML配置资源                 |
+
+      底层实现 - XmlBeanDefinitionReader
+
+    - 基于Properties资源装载Spring Bean配置元信息
+
+      | properties属性名 | 使用场景                   |
+      | ---------------- | -------------------------- |
+      | (class)          | Bean类全称限定名           |
+      | (abstract)       | 是否为抽象的BeanDefinition |
+      | (parent)         | 指定parent BeanDefinition  |
+      | (lazy-init)      | 是否为延迟初始化           |
+      | (ref)            | 引用其他Bean的名称         |
+      | (scope)          | 设置Bean的scope属性        |
+      | ${n}             | n表示第n+1个构造器参数     |
+
+      底层实现 - PropertiesBeanDefinitionReader
+
+      
+
+  - Spring 外部化配置元信息 - PropertySource
+
+  - Spring Profile 元信息 - @Profile
