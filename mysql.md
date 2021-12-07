@@ -422,9 +422,33 @@ binlog是数据库服务器级别的日志文件和存储引擎无关。binlog�
 
 ![alt](imgs/mysql_buffer_pool.png)
 
+### 多个bufferpool
+
+![alt](imgs/mysql_buffer_pool_multi.png)
+
+
+
 ### 数据行物理存储
 
 ![alt](imgs/mysql_row_formmat.png)
 
 ![alt](imgs/mysql_page.png)
+
+### linux文件
+
+![alt](imgs/linux_file_system.png)
+
+### mysql redolog格式
+
+\[日志类型] \[表空间ID] \[数据页号] \[数据页中的偏移量] \[具体修改的数据]
+
+其中\[日志类型]可以为MLOG_1BYTE MLOG_2BYTE MLOG_4BYTE MLOG_8BYTE
+
+\[日志类型] \[表空间ID] \[数据页号] \[数据页中的偏移量] \[修改数据长度] \[具体修改的数据]
+
+\[日志类型]只能是 MLOG_WRITE_STRING
+
+### mysql redolog磁盘存储方式
+
+![alt](imgs/redolog_disk.png)
 

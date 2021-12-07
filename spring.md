@@ -938,8 +938,124 @@ ApplicationContext除了IoC容器角色，还有提供：
 
       底层实现 - PropertiesBeanDefinitionReader
 
+    - Spring模式注解
+
+      | Spring注解     | 场景说明          | 起始版本 |
+      | -------------- | ----------------- | -------- |
+      | @Repository    | 数据仓储模式注解  | 2.0      |
+      | @Component     | 通用组件模式注解  | 2.5      |
+      | @Service       | 服务模式注解      | 2.5      |
+      | @Controller    | Web控制器模式注解 | 2.5      |
+      | @Configuration | 配置类模式注解    | 3.0      |
+
+    - Spring Bean依赖注入注解
+
+      | Spring注解 | 场景说明                           | 起始版本 |
+      | ---------- | ---------------------------------- | -------- |
+      | @Autowired | Bean依赖注入，支持多种依赖查找方式 | 2.5      |
+      | @Qualifier | 细粒度的@Autowired依赖查找         | 2.5      |
+
+      | Java注解  | 场景说明         | 起始版本 |
+      | --------- | ---------------- | -------- |
+      | @Resource | 类似于@Autowired | 2.5      |
+      | @Inject   | 类似于@Autowired | 2.5      |
+
+    - Spring Bean条件装配注解
+
+      | Spring注解   | 场景说明       | 起始版本 |
+      | ------------ | -------------- | -------- |
+      | @Profile     | 配置化条件装配 | 3.1      |
+      | @Conditional | 编程条件装配   | 4.0      |
+
+    - SpringBean生命周期回调注解
+
+      | Spring注解     | 场景说明                                       | 起始版本 |
+      | -------------- | ---------------------------------------------- | -------- |
+      | @PostConstruct | 同 \<bean init-method="..."/> InitializingBean | 2.5      |
+      | @PreDestroy    | 同\<bean destroy-method="..."/> DisposableBean | 2.5      |
+
+    - Spring IoC 容器装配注解
+
+      | Spring注解      | 场景说明                                | 起始版本 |
+      | --------------- | --------------------------------------- | -------- |
+      | @ImportResource | 替换XML元素\<import>                    | 3.0      |
+      | @Import         | 导入Configuration Class                 | 3.0      |
+      | @ComponentScan  | 扫描指定package下标注Spring模式注解的类 | 3.1      |
+
       
 
   - Spring 外部化配置元信息 - PropertySource
 
+    - Spring IoC属性注解
+
+      | Spring注解       | 场景说明                       | 起始版本 |
+      | ---------------- | ------------------------------ | -------- |
+      | @PropertySource  | 配置属性抽象PropertySource注解 | 3.1      |
+      | @PropertySources | @PropertySource集合注解        | 4.0      |
+
+    - api
+
+      PropertySource 和 PropertySources
+
+  - 基于YAML资源装在外部化配置
+
+    - API编程
+      - org.springframework.beans.factory.config.YamlProcessor
+        - org.springframework.beans.factory.config.YamlMapFactoryBean
+        - org.springframework.beans.factory.config.YamlPropertiesFactoryBean
+
   - Spring Profile 元信息 - @Profile
+
+- Spring XML 资源 BeanDefinition 解析与注册
+
+  - 核心API - XmlBeandefinitionReader
+
+    - 资源 - Resource
+    - 底层 - BeanDefinitionDocumentReader
+      - XML解析 - Java DOM Level 3 API
+      - BeanDefinition解析 - BeanDefinitionParserDelegate
+      - BeanDefinition注册 - BeanDefinitionRegistry
+
+  - Spring XML扩展 通过NameSpaceHandlerSupport 和 BeanDefinitionParser来实现（需要实现自己的xsd，并在spring.handlers文件中保存对应关系）
+
+    spring.schemas文件的作用是进行schema重定向
+
+    - 基于Extensible XML authoring 扩展Spring XML元素
+      - 编写XML Schema文件：定义XML结构
+      - 自定义NamespaceHandler实现：命名空间绑定
+      - 自定义BeanDefinitionParser实现：XML元素与BeanDefinition解析
+      - 注解XML扩展：命名空间与XML Schema映射
+    - 扩展原理
+      - AbstractApplicaitonContext#obtainFreshBeanFactory
+        - AbstractRefreshableApplicationContext#refreshBeanFactory
+          - AbstractXmlApplicationContext#locadBeanDefinitons
+            - ...
+              - XmlBeanDefinitionReader#doLoadBeanDefinitions
+                - ...
+                  - BeanDefinitionParserDelegate#parseCustomELement
+
+- Spring Properties 资源 BeanDefinition 解析与注册
+
+  - 核心API - PropertiesBeanDefinitionReader
+    - 资源
+      - 字节流 - Resource
+      - 字符流 - EncodedResource
+    - 底层
+      - 存储 - java.util.Properties
+      - BeanDefinition解析 - API内部实现
+      - BeanDefinition注册 - BeanDefinitionRegistry
+
+- Spring Java 注册 BeanDefinition 解析与注册
+
+  - 核心API - AnnotatedBeanDefinitionReader
+    - 资源
+      - 类对象 - java.lang.Class
+    - 底层
+      - 条件评估 - ConditionEvaluator
+      - Bean范围解析 - ScopeMetadataResolver
+      - BeanDefinition解析 - 内部API实现
+      - BeanDefinition处理 - AnnotationConfigUtils.processCommonDefinitionAnnotations
+      - BeanDefinition注册 - BeanDefinitionRegistry
+
+### Spring资源管理(Resources)
+
