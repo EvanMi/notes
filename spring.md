@@ -1187,3 +1187,33 @@ Spring通配路径资源加载器
   - 格式元素：{ArgumentIndex (,FormatType,(FormatStyle))}
   - FormatType：消息格式类型，可选项，每种类型在number、date、time和choice类型选其一
   - FormatStyle：消息格式风格，可选项，包括short、medium、long、full、integer、currency、percent
+
+### Spring校验
+
+- Validator接口设计
+  - 接口职责
+    - Spring内部校验器接口，通过编程的方式校验目标对象
+  - 核心方法
+    - supports(Class)：校验目标类能否校验
+    - validate(Object,Errors)：校验目标对象，并将校验失败的内容输出到Errors对象
+  - 配套组件
+    - 错误收集器：org.springframework.validation.Errors
+    - Validator工具类：org.springframework.validation.ValidationUtils
+- Errors文案生成步骤
+  - 选择Errors实现（如：org.springframework.validation.BeanPropertyBindingResult）
+  - 调用reject或rejectValue方法
+  - 获取Errors对象中ObjectError或FieldError
+  - 将ObjectError或FieldError中的code和args，关联MessageSource实现（如：ResourceBundleMessageSource）
+
+- 自定义Validator
+  - 实现org.springframework.validation.Validator接口
+    - 实现supports 方法
+    - 实现validate方法
+      - 通过Errors对象收集错误
+        - ObjectError：对象(Bean)错误
+        - FieldError：对象（Bean）属性（Property）错误
+      - 通过ObjectError和FieldError关联MessageSource实现获取最终文案
+- Bean Validation 与 Validator适配
+  - 核心组件 - org.springframework.validation.beanvalidation.LocalValidatorFactoryBean
+  - 依赖Bean Validation - JSR-303 OR JSR-349 provider
+  - Bean方法参数校验 - org.springframework.validation.beanvalidation.MethodValidationPostProcessor
