@@ -987,6 +987,16 @@ FullGC优化的前提是MinorGC的优化，MinorGCC的优化前提是合理分�
 
 ### 垃圾回收
 
+#### 观察垃圾回收命令
+
+-Xloggc:./gc-%t.log -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintGCCause -XX:+UseGCLogFileRotaion -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M
+
+#### 垃圾收集所有参数查看
+
+java -XX:+PrintFlagsIntial 表示打印出所有参数选项的默认值
+
+java -XX:+PrintFlagsFinal 标识打印出所有参数选项在运行程序时生效的值
+
 #### MinorGC流程
 
 1、什么样的对象会进入到老年代？
@@ -1698,57 +1708,62 @@ public static void main(String[] args) throws Exception {
 
 // ================  因为RoutePolicy是基于Route的, 所以为了做到全局统一配置, 这里我们通过实现RoutePolicyFactory接口来实现
 // RoutePolicyFactoryInstrumentationImpl将为用户自定义的每个Route添加一个RoutePolicyAdvice, 实现了类似切面的逻辑统一存放。
+
+```java
 class RoutePolicyFactoryInstrumentationImpl implements RoutePolicyFactory {
 	static final String EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC = "METRIC-STOPWATCH";
+private final RoutePolicy policy = new RoutePolicyInstrumentationImpl();
 
-	private final RoutePolicy policy = new RoutePolicyInstrumentationImpl();
-	
+@Override
+public RoutePolicy createRoutePolicy(CamelContext camelContext, String routeId, RouteDefinition route) {
+	return policy;
+}
+
+// =========================================
+static class RoutePolicyInstrumentationImpl extends org.apache.camel.support.RoutePolicySupport
+      implements RoutePolicy {
+
 	@Override
-	public RoutePolicy createRoutePolicy(CamelContext camelContext, String routeId, RouteDefinition route) {
-		return policy;
+	public void onExchangeBegin(Route route, Exchange exchange) {
+		// 参考 CamelInternalProcessor.InstrumentationAdvice 内部类
+		final StopWatch answer = new StopWatch();
+		// ====================== 这里要使用栈进行存储, 至于原因:
+		// === 因为可能存在支线route, 例如 from().to("direct:500").to(xxxx) , 这里的"direct:500"会导致重建exchange, 也就是这里会再次被调用
+		if(exchange.getProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC) == null){
+			exchange.setProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC, new ArrayDeque<StopWatch>());
+		}
+		@SuppressWarnings("unchecked")
+		Deque<StopWatch> deque = exchange.getProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC, Deque.class);
+		deque.push(answer);
 	}
-	
-	// =========================================
-	static class RoutePolicyInstrumentationImpl extends org.apache.camel.support.RoutePolicySupport
-	      implements RoutePolicy {
-	
-		@Override
-		public void onExchangeBegin(Route route, Exchange exchange) {
-			// 参考 CamelInternalProcessor.InstrumentationAdvice 内部类
-			final StopWatch answer = new StopWatch();
-			// ====================== 这里要使用栈进行存储, 至于原因:
-			// === 因为可能存在支线route, 例如 from().to("direct:500").to(xxxx) , 这里的"direct:500"会导致重建exchange, 也就是这里会再次被调用
-			if(exchange.getProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC) == null){
-				exchange.setProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC, new ArrayDeque<StopWatch>());
-			}
-			@SuppressWarnings("unchecked")
-			Deque<StopWatch> deque = exchange.getProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC, Deque.class);
-			deque.push(answer);
+
+	@Override
+	public void onExchangeDone(Route route, Exchange exchange) {
+		@SuppressWarnings("unchecked")
+		Deque<StopWatch> deque  = exchange.getProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC, Deque.class);
+		if(deque.size() > 1){
+			// 主Route还没走完
+			StopWatch subSW = deque.poll();
+			Console.log("支exchange {} 耗時 {} millis; routeId [ {} ]", exchange.getExchangeId(), subSW.taken(), route.getId());
+			return;
+		}
+    Console.log("主exchange {} 耗時 {} millis; routeId [ {} ]", exchange.getExchangeId(), 		           接口及      deque.poll().taken(), route.getId());
 		}
 	
-		@Override
-		public void onExchangeDone(Route route, Exchange exchange) {
-			@SuppressWarnings("unchecked")
-			Deque<StopWatch> deque  = exchange.getProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC, Deque.class);
-			if(deque.size() > 1){
-				// 主Route还没走完
-				StopWatch subSW = deque.poll();
-				Console.log("支exchange {} 耗時 {} millis; routeId [ {} ]", exchange.getExchangeId(), subSW.taken(), route.getId());
-				return;
-			}
+	}
+
+}
+```
 
 
 ​			
-​			Console.log("主exchange {} 耗時 {} millis; routeId [ {} ]", exchange.getExchangeId(), deque.poll().taken(), route.getId());
-​		}
-​	
-	}
-}
+​			
 
-// ====================== 配置
-@Component
-public class RoutePolicySample extends RouteBuilder {
 
+
+	// ====================== 配置
+	@Component
+	public class RoutePolicySample extends RouteBuilder {
 	@Override
 	public void configure() throws Exception {
 	    // 全局配置, 避免需要在每个Route定义上添加
@@ -1767,6 +1782,41 @@ public class RoutePolicySample extends RouteBuilder {
 		
 	}
 	}
+### Camel MDC日志
+
+```
+@Bean
+public CamelContextConfiguration contextConfiguration() {
+    return new CamelContextConfiguration() {
+        @Override
+        public void beforeApplicationStart(CamelContext context) {
+            context.setUseMDCLogging(true);
+            context.setUnitOfWorkFactory(MyUnitOfWork::new);
+        }
+
+        @Override
+        public void afterApplicationStart(CamelContext camelContext) {
+        }
+    };
+}
+Then, create your custom unit of work class
+
+public class MyUnitOfWork extends MDCUnitOfWork {
+    public MyUnitOfWork(Exchange exchange) {
+        super(exchange);
+        if( exchange.getProperty("myProp") != null){
+            MDC.put("myProp", (String) exchange.getProperty("myProp"));
+        }
+    }
+}
+
+
+
+最后使用如下方式来进行日志打印：%X{myProp}
+```
+
+
+
 ## 使用字节码生成类
 
 ```java
@@ -1813,6 +1863,14 @@ public static BaizeJsfProviderConfig<?> generateJsfInterface(String alias, Strin
 ![image-20220223165558848](/Users/mipengcheng3/Library/Application Support/typora-user-images/image-20220223165558848.png)
 
 
+
+### 安装GraalVM
+
+参考：https://www.graalvm.org/22.0/docs/getting-started/macos/
+
+1. 下载对应压缩包：https://github.com/graalvm/graalvm-ce-builds/releases
+2. 在MAC环境下要执行 sudo xattr -r -d com.apple.quarantine /Users/mipengcheng3/works/graalvm/active
+3. 执行./gu install native-image
 
 ## java课程笔记
 
