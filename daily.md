@@ -1813,6 +1813,50 @@ public class MyUnitOfWork extends MDCUnitOfWork {
 
 
 最后使用如下方式来进行日志打印：%X{myProp}
+
+
+
+向线程池中传递MDC
+@Bean
+public Executor asyncServiceExecutor() {
+    logger.info("start asyncServiceExecutor");
+    // 使用VisiableThreadPoolTaskExecutor
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    // 配置核心线程数
+    executor.setCorePoolSize(20);
+    // 配置最大线程数
+    executor.setMaxPoolSize(100);
+    // 配置队列大小
+    executor.setQueueCapacity(99999);
+    // 配置线程池中的线程的名称前缀
+    executor.setThreadNamePrefix("async-service-");
+
+    // rejection-policy：当pool已经达到max size的时候，如何处理新任务
+    // CALLER_RUNS：不在新线程中执行任务，而是有调用者所在的线程来执行
+    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+    // 填充装饰器
+    executor.setTaskDecorator(new MdcTaskDecorator());
+    // 执行初始化
+    executor.initialize();
+    return TtlExecutors.getTtlExecutor(executor);
+}
+
+class MdcTaskDecorator implements TaskDecorator {
+    @Override
+    public Runnable decorate(Runnable runnable) {
+        Map<String, String> contextMap = MDC.getCopyOfContextMap();
+        return () -> {
+            try {
+                if (contextMap != null) {
+                    MDC.setContextMap(contextMap);
+                }
+                runnable.run();
+            } finally {
+                MDC.clear();
+            }
+        };
+    }
+}
 ```
 
 
@@ -1893,4 +1937,41 @@ public static BaizeJsfProviderConfig<?> generateJsfInterface(String alias, Strin
 #### 标量替换
 
 如果栈帧中没有足够的空间存放一个不会逃逸的对象，那么会将该对象的成员变量分解为若干个被这个方法使用的成员变量代替，这些代替的成员变量在栈帧或寄存器上分配空间，这样就不会因为没有一大块连续空间导致对象内存不够分配。开启标量替换参数：-XX:+EliminateAllocations （JDK7之后默认开启）。
+
+### 字符串常量
+
+```java
+    @Test
+    public void testString() {
+        String a = new String("b") + new String("b");
+        String b = a.intern();
+        String c = "bb";
+
+        System.out.println(a==b);
+        System.out.println(a==c);
+        System.out.println(b==c);
+
+    }
+    
+    @Test
+    public void testString() {
+        String a = new String("b") + new String("b");
+        String c = "bb";
+        String b = a.intern();
+        
+
+        System.out.println(a==b);
+        System.out.println(a==c);
+        System.out.println(b==c);
+
+    }
+    
+    @Test
+    public void testStringJava() {
+        String a = new String("ja") + new String("va");
+        String b = a.intern();
+
+        System.out.println(a == b);
+    }
+```
 
