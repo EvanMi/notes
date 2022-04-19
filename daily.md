@@ -771,6 +771,17 @@ interuptIdleWorkers方法会w.tryLock()来保证只清除没有活干的线程�
 
 
 
+### Tomcat 文件目录接口
+
+```
+/bin 存放启动和关闭的脚本
+/conf 存放Tomcat的各种全局配置文件，其中最重要的是server.xml
+/lib 存放Tomcat以及所有web应用都可以访问的jar文件
+/logs 存放Tomcat知识性产生的日志文件
+/work 存放JSF编译后产生的class文件
+/webapps Tomcat的web应用目录，默认情况下把web应用放在这个目录下
+```
+
 
 
 ## Java基础
@@ -1974,4 +1985,8 @@ public static BaizeJsfProviderConfig<?> generateJsfInterface(String alias, Strin
         System.out.println(a == b);
     }
 ```
+
+### Tomcat
+
+Tomcat就是一个HTTP服务器+Servlet容器，我们亲切地称呼它为WEB容器。
 
