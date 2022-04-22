@@ -1990,3 +1990,7 @@ public static BaizeJsfProviderConfig<?> generateJsfInterface(String alias, Strin
 
 Tomcat就是一个HTTP服务器+Servlet容器，我们亲切地称呼它为WEB容器。
 
+CATALINA_HOME 里面只需要包含bin 和 lib
+
+CATALINA_BASE 包含 logs webapp conf
+
