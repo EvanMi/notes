@@ -1217,8 +1217,6 @@ Spring通配路径资源加载器
   - 核心组件 - org.springframework.validation.beanvalidation.LocalValidatorFactoryBean
   - 依赖Bean Validation - JSR-303 OR JSR-349 provider
   - Bean方法参数校验 - org.springframework.validation.beanvalidation.MethodValidationPostProcessor
-<<<<<<< HEAD
-=======
 
 
 
@@ -1660,4 +1658,3 @@ Spring Framework3.1开始引入Environment抽象，它统一Spring配置属性�
 
 
 
->>>>>>> 51c62885025b8fcdbb4f5fc104944baf565e2e80
