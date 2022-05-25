@@ -801,7 +801,7 @@ public static AutowiredAnnotationBeanPostProcessor {
 
   Java API：AbstractBeanDefinition#serDestoryMethodName(String)
 
-执行顺序：从上到下一次执行。
+执行顺序：从上到下依次执行。
 
 ### 传统IoC容器的实现
 
@@ -1217,3 +1217,447 @@ Spring通配路径资源加载器
   - 核心组件 - org.springframework.validation.beanvalidation.LocalValidatorFactoryBean
   - 依赖Bean Validation - JSR-303 OR JSR-349 provider
   - Bean方法参数校验 - org.springframework.validation.beanvalidation.MethodValidationPostProcessor
+<<<<<<< HEAD
+=======
+
+
+
+### 数据绑定
+
+#### Spring数据绑定使用场景
+
+- Spring BeanDefinition到Bean实例创建
+- Spring数据绑定（DataBinder）
+- Spring Web参数绑定（WebDataBinder）
+
+#### Spring数据绑定组件
+
+- 标准组件
+
+  - org.springframework.validation.DataBinder
+
+- Web组件
+
+  - org.springframework.web.bind.WebDataBinder
+  - org.springframework.web.bind.ServletReuqestDataBinder
+  - org.springframework.web.bind.WebRequestDataBinder
+  - org.springframework.web.bind.support.WebExchangeDataBinder(since 5.0)
+
+- DataBinder核心属性
+
+  | 属性                | 说明                         |
+  | ------------------- | ---------------------------- |
+  | target              | 关联目标Bean                 |
+  | objectName          | 目标Bean名称                 |
+  | bindingResult       | 属性绑定结果                 |
+  | typeConverter       | 类型转换器                   |
+  | conversionService   | 类型转换服务                 |
+  | messageCodeResolver | 校验错误文案Code处理器       |
+  | validators          | 关联的Bean Validator实例集合 |
+
+- DataBinder绑定方法
+
+  - bind(PropertyValues)：将PropertyValues Key-Value内容映射到关联Bean(target)中的属性上
+    - 假设PropertyValues中包含“name=xx”的键值对，同时Bean对象User中存在name属性，当bind方法执行时，User对象中的name属性值将被绑定为xx。
+
+- DataBinder绑定控制参数
+
+  | 参数名称            | 说明                             |
+  | ------------------- | -------------------------------- |
+  | igonoreUnknowFields | 是否忽略位未知字段,默认值true    |
+  | ignoreInvalidFields | 是否忽略非法字段，默认false      |
+  | autoGrowNestedPaths | 是否自动增加嵌套路径，默认值true |
+  | allowedFields       | 绑定字段白名单                   |
+  | disallowedFields    | 绑定字段黑名单                   |
+  | requiredFields      | 必须绑定字段                     |
+
+- Spring底层Java Beans替换实现
+
+  - JavaBeans核心实现 - java.beans.BeanInfo
+    - 属性（Property）
+      - java.beans.PropertyEditor
+    - 方法（Method）
+    - 事件（Event）
+    - 表达式（Expression）
+  - Spring 替代实现 - org.springframework.beans.BeanWrapper
+    - 属性（Property）
+      - java.beans.PropertyEditor
+    - 嵌套属性路径(nested path)
+  - BeanWrapper
+    - Spring底层JavaBeans基础设施的中心化接口
+    - 通常不会直接使用，简介用户BeanFactory和DataBinder
+    - 提供标准JavaBeans分析和操作，能够单独或批量存储Java Bean的属性(peoperties)
+    - 支持嵌套属性路径(nested path)
+    - 实现类org.springframework.beans.BeanWrapperIImpl
+  - DataBinder 与 BeanWrapper
+    - bind 方法生成BeanPropertyBindingResult
+    - BeanPropertyBindingResult 关联 BeanWrapper
+
+
+
+### Spring类型转换
+
+#### 基于JavaBeans接口的类型转换
+
+- 核心职责
+  - 将String类型的内容转化为目标类型的对象
+- 扩展原理
+  - Spring框架将文本内容传递到PropertyEditor实现的setAsText(String)方法
+  - PropertyEditor#setAsText(String)方法实现将String类型转化为目标类型对象
+  - 将目标类型的对象传入PropertyEditor#setValue(Object)方法
+  - PropertyEditor#setValue(Object)方法实现需要好临时存储传入对象
+  - Srping框架将同构PropertyEditor#getValue()获取类型转换后的对象
+
+- 自定义PropertyEditor扩展
+  - 扩展模式
+    - 扩展java.beans.PropertyEditorSupport类
+  - 实现org.springframework.beans.PropertyEditorRegistrar
+    - 实现registerCustomEditors(org.springframework.beans.PropertyEditorRegistry)方法
+    - 将PropertyEditorRegistrar实现注册为Spring Bean
+  - 向org.springframework.bean.PropertyEditorRegistry注册自定义PropertyEditor实现
+    - 通用类型实现registerCustomEditor(Class<?>,PropertyEditor)
+    - Java Bean属性类型实现：registerCustomEditor(Class<?>,String,PropertyEditor)
+
+#### Spring3 通用类型转换接口
+
+- 类型转换接口 - org.springframework.core.convert.converter.Converter<S,T>
+  - 泛型参数S：来源类型，泛型参数T：目标类型
+  - 核心方法：T convert(S)
+- 通用类型转换接口 - org.springframework.core.convert.converter.GenericConverter
+  - 核心方法：convert(Object, TypeDescriptor, TypeDescriptor)
+  - 配对类型：org.springframework.core.convert.converter.GenericConverter.ConvertiablePair
+  - 类型描述：org.springframework.core.convert.TypeDescriptor
+- 扩展Spring类型转换器
+  - 实现转换器接口
+    - org.springframework.core.convert.converter.Converter
+    - org.springframework.core.convert.converter.ConverterFactory
+    - org.springframework.core.convert.converter.GenericConverter
+  - 注册转换器实现
+    - 通过ConversionServiceFactoryBean
+    - 通过org.springframework.core.convert.ConversionService
+- ConversionService作为依赖
+  - 类型转换器底层接口 - org.springframework.beans.TypeConverter
+    - 起始版本2.0
+    - 核心方法 - convertIfNessary重载方法
+    - 抽象实现 - org.springframework.beans.TypeConverterSupport
+      - 实现接口 - org.springframework.beans.TpeConverter
+      - 扩展实现 - org.springframework.beans.PropertyEditorRegistrySupport
+      - 委派实现 - org.springframework.beans.TypeConverterDelegate
+        - 构造来源 - org.springframework.beans.AbstractNestablePropertyAccessor实现
+          - org.springframework.beans.BeanWrapperImpl
+        - 依赖 - java.beans.PropertyEditor实现
+          - 默认内建实现 - PropertyEditorRegistrySupport#registerDefaultEditors
+        - 可选依赖 - org.springframework.core.convert.ConversionService实现
+    - 简单实现 - org.springframework.beans.SimpleTypeConverter
+
+### Spring泛型处理
+
+#### java泛型基础
+
+- 泛型使用场景
+  - 编译时强类型检查
+  - 避免类型强转
+  - 实现通用算法
+
+#### Spring泛型类型辅助类
+
+- 核心API - org.sprinframework.core.GenericTypeResolver
+  - 支持版本:[2.5.2,)
+  - 处理类型相关(Type)相关方法
+    - resolveReturnType
+    - resolveType
+  - 处理泛型参数类型(ParameterizedType)相关方法
+    - resolveReturnTypeArgument
+    - resolveTypeArgument
+    - resolveTypeArguments
+  - 处理泛型类型变量(TypeVariable)相关方法
+    - getTypeVariableMap
+- 核心API - org.springframework.core.GenericCollectionTypeResolver
+  - 版本支持：[2.0, 4.3]
+  - 替换实现：org.springframework.core.ResolvableType
+  - 处理Collection相关
+    - getCollection*Type
+  - 处理Map相关
+    - getMapKey*Type
+    - getMapValue*Type
+- 核心API - org.springframework.core.MethodParameter
+  - 其实版本：[2.0,)
+  - 元信息
+    - 关联的方法 - Method
+    - 关联的构造器 - Constructor
+    - 构造器或方法参数索引 - parameterIndex
+    - 构造器或方法参数类型 - parameterType
+    - 构造器或方法参数泛型类型 - genericParameterType
+    - 构造器或方法参数参数名称 - parameterName
+    - 所在的类 - containingClass
+- 核心API - org.springframework.core.ResolvableType
+  - 起始版本：[4.0, )
+  - 扮演角色：GenericTypeResolver和GenericCollectionTypeResolver替代者
+  - 工厂方法：for*方法
+  - 转换方法：as*方法
+  - 处理方法：resolve*方法
+
+### Spring事件
+
+Spring标准事件 - ApplicationEvent
+
+- Java标准事件java.util.EventObject扩展
+  - 扩展特性：时间发生时间戳
+- Spring应用上下文ApplicationEvent扩展 - ApplicationContextEvent
+  - Spring应用上下文(ApplicationContext)作为事件源
+  - 具体实现：
+    - org.springframework.context.event.ContextClosedEvent
+    - org.springframework.context.event.ContextRefreshedEvent
+    - org.springframework.context.event.ContextStartedEvent
+    - org.springframework.context.event.ContextStoppedEvent
+
+基于接口的Spring事件监听器
+
+- Java标准事件监听器 java.util.EventListener扩展
+  - 扩展接口 - org.springframework.context.ApplicationListener
+  - 设计特点：单一类型事件处理
+  - 处理方法：onApplicationEvent(ApplicationEvent)
+  - 事件类型：org.springframework.context.ApplicationEvent
+- Spring注解 - @org.springframework.context.event.EventListener
+
+| 特性                 | 说明                                     |
+| -------------------- | ---------------------------------------- |
+| 设计特点             | 支持多ApplicationEvent类型，无须接口约束 |
+| 注解目标             | 方法                                     |
+| 是否支持异步执行     | 支持                                     |
+| 是否支持泛型类型事件 | 支持                                     |
+| 是否支持顺序控制     | 支持，配合@Order注解控制                 |
+
+
+
+注册Spring ApplicationListener
+
+- 方法一：ApplicationListener 作为Spring Bean注册
+- 方法二：通过ConfigurableApplicationContext API注册
+
+Spring事件发布器
+
+- 方法一：通过ApplicationEventPublisher发布Spring事件
+  - 获取ApplicationEventPublisher
+    - 依赖注入
+- 方法二：通过ApplicationEventMulticaster发布Spring事件
+  - 获取ApplicationEventMulticaster
+    - 依赖注入
+    - 依赖查找
+
+Spring层次性上下文事件传播
+
+- 发生说明
+
+  当Spring应用出现多层次Spring应用上下文(ApplicationContext)时，如Spring WebMVC、Spring Boot或Sring Cloud场景下，由子ApplicationContext发起Spring事件可能会传递到其Parent ApplicationContext（知道Root）的过程。
+
+- 如何避免
+
+  定位Spring事件源(ApplicationContext)进行过滤处理
+
+
+
+Spring4.2 Payload事件
+
+- Spring Payload事件 - org.springframework.context.PayloadApplicationEvent
+  - 使用场景：简化Spring事件发送，关注事件源主体
+  - 发送方法
+    - ApplicationEventPublisher#publishEvent(java.lang.Object)
+
+自定义Spring事件
+
+- 扩展org.springframework.context.ApplicationEvent
+- 实现org.springframework.context.ApplicationListener
+- 注册org.springframework.context.ApplicationListener
+
+
+
+依赖注入ApplicationEventPublisher
+
+- 通过ApplicationEventPublisherAware回调接口
+- 通过 @Autowired ApplicationEventPublisher
+
+依赖查找ApplicationEventMulticaster
+
+- 查找条件
+  - Bean名称："applicationEventMulticaster"
+  - Bean类型：org.springframework.context.event.ApplicationEventMulticaster
+
+同步和异步Spring事件广播
+
+- 基于实现类 - org.springframework.context.event.SimpleApplicatioinEventMulticaster
+  - 模式切换: setTaskExecutor(java.util.concurrent.Executor)方法
+    - 默认模式：同步
+    - 异步模式：如java.util..concurrent.ThreadPoolExecutor
+  - 设计缺陷：非基于接口契约编程
+- 基于注解 - @org.springframework.context.event.EventListener
+  - 模式切换
+    - 默认模式：同步
+    - 异步模式：标注@org.springframework.scheduling.annotation.Async
+  - 实现限制：无法直接实现同步/异步动态切换
+
+
+
+Spring事件异常处理。Spring3.0错误处理接口 - org.springframework.util.ErrorHandler
+
+- 使用场景
+  - Spring事件(Events)
+    - SimpleApplicationEventMulticaster Spring 4.1开始支持
+  - Spring本地调度(Scheduling)
+    - org.springframework.scheduling.concurrent.ConcurrentTaskScheduler
+    - org.springframework.scheduling.concurrent.TreadPoolTaskScheduler
+
+
+
+### Spring条件注解
+
+- @Conditional实现原理
+  - 上下文对象 - org.pringframework.context.annotation.ConditionContext
+  - 条件判断 - org.springframework.context.annotation.ConditionEvaluator
+  - 配置阶段 - org.springframework.context.annotation.ConfigurationCondition.ConfigurationPhase
+  - 判断入口 - org.springframework.context.annotation.ConfigurationClassPostProcessor
+    				- org.springframework.context.annotation.ConfigurationClassParser
+
+
+
+### Environment
+
+#### 理解Spring Environment抽象
+
+- 统一的Spring配置属性管理
+
+Spring Framework3.1开始引入Environment抽象，它统一Spring配置属性的存储，包括占位符处理和类型转换，不进完整地替换PropertyPlaceholderConfigurer，而且还支持更丰富的配置属性源（PropertySource）。
+
+- 条件化Spring Bean装配管理
+
+通过Environment Profiles信息，帮助Spring容器提供条件化装配Bean
+
+
+
+#### Spring Environment接口使用场景
+
+- 用户属性占位符处理
+  - Spring3.1前占位符处理
+    - 组件：org.springframework.beans.factory.config.PropertyPlaceholderConfigurer
+    - 接口：org.springframework.util.StringValueResolver
+  - Spring3.1 + 占位符处理
+    - 组件：org.springframework.context.support.PropertySourcesPlaceholderConfigurer
+    - 接口：org.springframework.beans.factory.config.EmbeddedValueResolver
+- 用户转换Spring配置属性类型
+- 用户存储Spring配置属性源（PropertySource）
+- 用户Profiles状态的维护
+
+### Spring配置属性源PropertySource
+
+- API
+  - 单配置属性源 - org.springframework.core.env.PropertySource
+  - 多配置属性源 - org.springframework.core.env.PropertySources
+- 注解
+  - 单配置属性源 - @org.springframework.context.annotation.PropertySource
+  - 多配置属性源 - @org.springframework.context.annotation.PropertySources
+- 关联
+  - 存储对象 - org.springframework.core.env.MutablePropertySources
+  - 关联方法 - org.springframework.core.env.ConfigurableEnvironment#getPropertySources()
+
+#### 基于注解扩展Spring配置属性源
+
+- @org.springframework.context.annotation.PropertySource实现原理
+  - 入口 - org.springframework.context.annotation.ConfigurationClassParser#doProcessConfigurationClass
+    - org.springframework.context.annotation.ConfigurationClassParser#processPropertySource
+- 4.3新增语义
+  - 配置属性字符编码 - encoding
+  - org.springframework.core.io.support.PropertySourceFactory
+- 适配对象 - org.springframework.core.env.CompositePropertySource
+
+
+
+##### 基于API扩展Spring配置属性源
+
+- Spring应用上下文启动前装配PropertySource
+- Spring应用上下文启动后装配PropertySource
+
+### Spring容器生命周期
+
+- AbstractApplicationContext#prepareRefresh()方法
+  - 启动时间 -startupDate
+  - 状态标识 -closed(false)、active(true)
+  - 初始化PropertySources - initPopertySources()
+  - 检查Environment中必须属性
+  - 初始化事件监听器集合
+  - 初始化早期Spring事件集合
+- AbstractApplicationContext#obtainFreshBeanFactory()方法
+  - 刷新Spring应用上下文底层BeanFactory - refreshBeanFactory()
+    - 如果已经存在的话，销毁或关闭BeanFactory
+    - 创建BeanFactory - createBeanFactory()
+    - 设置BeanFactory id
+    - 设置“是否允许BeanDefinition重复定义” -customizeBeanFactory(DefaultListableBeanFactory)
+    - 设置“是否允许循环依赖” -customizeBeanFactory(DefaultListableBeanFactory)
+    - 架子啊BeanDefinition - loadBeanDefinitions(DefaultListableBeanFactory)方法
+    - 关联新建BeanFactory到Spring应用上下文
+  - 返回Spring应用上下文底层BeanFactory - getBeanFactory()
+- AbstractApplicationContext#prepareBeanFactory(ConfigurableListableBeanFactory)方法
+  - 关联ClassLoader
+  - 设置Bean表达式处理器
+  - 添加PropertyEditorRegistrar实现 - ResourceEditorRegistrar
+  - 添加Aware回调接口BeanPostProcessor实现 - ApplicationContextAwareProcessor
+  - 忽略Aware回调接口作为依赖注入接口
+  - 注册ResolvableDependency对象 - BeanFactory、ResourceLoader、ApplicationEventPublisher以及ApplicationContext
+  - 注册ApplicationListenerDetector对象
+  - 注册LoadTimeWeaverAwareProcessor对象
+  - 注册单例对象 - Environment、Java System Properties 以及 OS环境变量
+- AbstractApplicationContext#postProcessBeanFactory(ConfigurableListableBeanFactory) 方法
+  - 由子类覆盖
+- AbstractApplicationContext#invokeBeanFactoryPostProcessors(ConfigurableListableBeanFactory)方法
+  - 调用BeanFactoryPostProcessor或BeanDefinitionRegistry后置处理方法
+  - 注册LoadTimeWeaverAwareProcessor对象
+- AbstractApplicationContext#registerBeanPostProcessors(ConfigurableListableBeanFactory)方法
+  - 注册PriorityOrdered类型的BeanPostProcessor Beans
+  - 注册Ordered类型的BeanPostProcessor Beans
+  - 注册普通BeanPostProcessor Beans
+  - 注册MergerdBeanDefinitionPostProcessor Beans
+  - 注册ApplicationListenerDetector对象
+- AbstractApplicationContext#initMessageSource()方法
+- AbstractApplicationContext#initApplicationEventMulticaster()方法
+- AbstractApplicationContext#onRefresh()方法 由子类进行实现，现有的实现都是在web场景下使用
+- AbstractApplicationContext#registerListeners()方法
+  - 添加当前应用上下文所关联的ApplicationListener对象（集合）
+  - 添加BeanFactory所注册ApplicationListener Beans
+  - 广播早期Spring事件
+- AbstractApplicationContext#finishBeanFactoryInitialization(ConfigurableListableBeanFactory)方法
+  - BeanFactory关联ConversionService Bean（如果存在）
+  - 添加StringValueResolver对象
+  - 依赖查找LoadTimeWeaverAware Bean
+  - BeanFactory临时ClassLoader置为null
+  - BeanFactory冻结配置
+  - BeanFactory初始化非延迟单例Beans
+- AbstractApplicationContext#finishRefresh()方法
+  - 清除ResourceLoader缓存 - clearResourceCaches() @since 5.0
+  - 初始化LifecycleProcessor对象 - initLifecycleProcessor()
+  - 调用LifecycleProcessor#onRefresh()方法
+  - 发布Spring应用上下文已刷新事件 - ContextRefreshedEvent
+  - 向MBeanServer托管LiveBeans
+- AbstractApplicationContext#start()方法
+  - 启动LifecycleProcessor
+    - 依赖查找Lifecycle Beans
+    - 启动Lifecycle Beans
+  - 发布Spring应用上下文已启动事件 - ContextStartedEvent
+- AbstractApplicationContext#stop()方法
+  - 停止LifecycleProcessor
+    - 依赖查找Lifecycle Beans
+    - 停止Lifecycle Beans
+  - 发布Spring应用上下文已停止事件 - ContextStoppedEvent
+- AbstractApplicationContext#close()方法
+  - 状态标识：active(false)、closed(true)
+  - Live Beans JMX撤销托管
+  - 发布Speing应用上下文已关闭事件 - ContextClosedEvent
+  - 关闭LifecycleProcessor
+    - 依赖查找 Lifecycle Beans
+    - 停止Lifecycle Beans
+  - 销毁Spring Beans
+  - 关闭BeanFactory
+  - 回调onClose()
+  - 注册Shutdown Hook线程（如果曾注册）
+
+
+
+>>>>>>> 51c62885025b8fcdbb4f5fc104944baf565e2e80

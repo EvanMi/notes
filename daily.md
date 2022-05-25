@@ -63,6 +63,26 @@ brew update
 
 
 
+### 查看公网IP
+
+curl ifconfig.me
+
+## Maven打包时包含dll文件
+
+<build>
+
+<resources>
+<resource>
+<directory>src/main/java</directory>
+<includes>
+<include>**/*.dll</include>
+</includes>
+<filtering>false</filtering>
+</resource>
+</resources>
+
+</build>
+
 ## linux 命令收集
 
 ss -lnt  # 查看socket状态
@@ -221,7 +241,7 @@ leader与follower出现非对称网络分区
 
 ![alt](imgs/leader_asyn_network.png)
 
-follower与其他节点出现非对称分区
+follower与其他节点出现对称分区
 
 ![alt](imgs/follower_asyn_network.png)
 
@@ -544,7 +564,9 @@ pmap -x pid | sort -n -k3**
 
 （2）jmap -dump:alive,format=b,file=xxxxx.hprof pid
 
-（3）jmap -clstatus 
+（3）jmap -clstatus pid 查看类信息
+
+（4）jmap -histo pid 查看对象个数统计信息
 
 ## NativeMemoryTracking
 
@@ -748,6 +770,17 @@ interuptIdleWorkers方法会w.tryLock()来保证只清除没有活干的线程�
 ![alt](imgs/tomcat_components.png)
 
 
+
+### Tomcat 文件目录接口
+
+```
+/bin 存放启动和关闭的脚本
+/conf 存放Tomcat的各种全局配置文件，其中最重要的是server.xml
+/lib 存放Tomcat以及所有web应用都可以访问的jar文件
+/logs 存放Tomcat知识性产生的日志文件
+/work 存放JSF编译后产生的class文件
+/webapps Tomcat的web应用目录，默认情况下把web应用放在这个目录下
+```
 
 
 
@@ -965,6 +998,16 @@ FullGC优化的前提是MinorGC的优化，MinorGCC的优化前提是合理分�
 
 ### 垃圾回收
 
+#### 观察垃圾回收命令
+
+-Xloggc:./gc-%t.log -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintGCCause -XX:+UseGCLogFileRotaion -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M
+
+#### 垃圾收集所有参数查看
+
+java -XX:+PrintFlagsIntial 表示打印出所有参数选项的默认值
+
+java -XX:+PrintFlagsFinal 标识打印出所有参数选项在运行程序时生效的值
+
 #### MinorGC流程
 
 1、什么样的对象会进入到老年代？
@@ -1139,6 +1182,12 @@ G1会根据预设的gc停顿时间，给新生代分配一些Region，然后到�
 
 ##### 垃圾收集常用命令
 
+jstack
+
+用来查看线程信息，最经常使用的场景就是用来查看线程死锁问题。
+
+jstack找出占用cpu最高的线程堆栈信息
+
 jstat
 
 ```sh
@@ -1295,6 +1344,46 @@ java通过反射创建的类都是 软引用，而软引用在回收的时候有
 
 
 
+### 安全点、安全区域
+
+#### OopMap
+
+前文我们说到，JVM 采用的可达性分析法有个缺点，就是从 `GC Roots` 找引用链耗时。
+
+都说他耗时，他究竟耗时在哪里？  
+GC 进行扫描时，需要查看每个位置存储的是不是引用类型，如果是，其所引用的对象就不能被回收；如果不是，那就是基本类型，这些肯定是不会引用对象的；这种对 GC 无用的基本类型的数据非常多，每次 GC 都要去扫描，显然是非常浪费时间的。  
+而且迄今为止，所有收集器在 `GC Roots` 枚举这一步骤都是必须暂停用户线程的。
+
+那有没有办法减少耗时呢？  
+一个很自然的想法，能不能用空间换时间? 把栈上的引用类型的位置全部记录下来，这样到 GC 的时候就可以直接读取，而不用一个个扫描了。Hotspot 就是这么实现的，这个用于存储引用类型的数据结构叫 `OopMap`。  
+`OopMap` 这个词可以拆成两部分：`Oop` 和 `Map`，`Oop` 的全称是 `Ordinary Object Pointer` 普通对象指针，`Map` 大家都知道是映射表，组合起来就是 普通对象指针映射表。
+
+在 `OopMap` 的协助下，HotSpot 就能快速准确地完成 `GC Roots` 枚举啦。
+
+#### 安全点
+
+`OopMap` 的更新，从直观上来说，需要在对象**引用关系发生变化**的时候修改。不过导致引用关系变化的指令非常多，如果对每条指令都记录 `OopMap` 的话 ，那将会需要大量的额外存储空间，空间成本就会变得无法忍受的高昂。选用一些特定的点来记录就能有效的缩小需要记录的数据量，这些特定的点就称为 **安全点 (Safepoint)**。
+
+有了安全点，当 GC 回收需要停止用户线程的时候，将设置某个中断标志位，各个线程不断轮询这个标志位，发现需要挂起时，自己跑到最近的安全点，更新完 `OopMap` 才能挂起。这主动式中断的方式是绝大部分现代虚拟机选择的方案，另一种抢占式就不介绍了。
+
+安全点不是任意的选择，既不能太少以至于让收集器等待时间过长，也不能过多以至于过分增大运行时的内存负荷。通常选择一些执行时间较长的指令作为安全点，如**方法调用**、**循环跳转**和**异常跳转**等。
+
+#### 安全区域
+
+使用安全点的设计似乎已经完美解决如何停顿用户线程，让虚拟机进入垃圾回收状态的问题了。但是，如果此时线程正处于 `Sleep` 或者 `Blocked` 状态，该怎么办？这些线程他不会自己走到安全点，就停不下来了。这个时候，安全点解决不了问题，需要引入 **安全区域 (Safe Region)**。
+
+安全区域指的是，在某段代码中，**引用关系不会发生变化**，线程执行到这个区域是可以安全停下进行 GC 的。因此，我们也可以把 安全区域 看做是扩展的安全点。
+
+当用户线程执行到安全区域里面的代码时，首先会标识自己已经进入了安全区域。那样当这段时间里虚拟机要发起 GC 时，就不必去管这些在安全区域内的线程了。当线程要离开安全区域时，它要检查虚拟机是否处于 STW 状态，如果是，则需要等待直到恢复。
+
+#### 总结
+
+HotSpot 使用 `OopMap` 把引用类型的指针记录下来，让 `GC Roots` 的枚举变得快速准确。  
+为了减少更新 `OopMap` 的开销，引入了 **安全点**。GC STW 时，线程需要跑到距离自己最近的**安全点**，更新完 `OopMap` 才能挂起。  
+处于`Sleep` 或者 `Blocked` 状态的线程无法跑到**安全点**，需要引入**安全区域**。GC 的时候，不会去管处于安全区域的线程，线程离开安全区域的时候，如果处于 STW 则需要等待直至恢复。
+
+
+
 ## 一些新兴的软件工具
 
 ### mybatis-mate
@@ -1337,4 +1426,571 @@ java通过反射创建的类都是 软引用，而软引用在回收的时候有
 	<version>2.2.16</version>
 </dependency>
 ```
+
+## Camel动态路由
+
+方式1 ：<toD />标签
+<toD uri="${in.header.nextUri}">
+通过toD标签即可实现路由的动态跳转。
+也结合条件判断使用动态跳转。
+
+<choice>
+    <!-- 串行或分支执行 -->
+    <when>
+        <simple>${property.type} == 'serial' or ${property.type} == 'branch'</simple>
+        <toD uri="${property.nextUrl}" />
+    </when>
+</choice>
+
+方式2 ：<routingSlip/>标签
+
+```xml
+<route> 
+   <from uri="direct:a"/> 
+   <routingSlip ignoreInvalidEndpoints="true"/> 
+​    <header>nextUri</header> 
+​  </routingSlip> 
+</route>
+```
+
+
+
+## JSF动态加载试探
+
+```java
+package com.jd.jdrc;
+
+import com.jd.jsf.gd.config.ProviderConfig;
+import com.jd.jsf.gd.config.RegistryConfig;
+import com.jd.jsf.gd.config.ServerConfig;
+import com.jd.jsf.gd.registry.ClientRegistry;
+import com.jd.jsf.gd.registry.RegistryFactory;
+import com.jd.jsf.gd.util.Constants;
+import com.jd.jsf.gd.util.JSFContext;
+import javassist.ClassPool;
+import javassist.CtClass;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+
+/**
+ * @author Libo <libo51@jd.com>
+ * @version v0.1
+ * @Description <描述>
+ *
+ * <p>
+ * @date 2021/11/11
+ */
+public class ApplicationForWebTest {
+
+    //全局只需要一个注册中心client
+    private static ClientRegistry CLIENT_REGISTRY;
+    static {
+        //参见https://cf.jd.com/pages/viewpage.action?pageId=245185287#JSF%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C-APPID%E5%8F%8AAPPNAME%E4%BC%A0%E9%80%92
+        //一定要设置这两个字段，会进行校验；
+        //不要随意填写，防止和别的应用名字冲突，这个两个字段可以通过jdos申请应用获取，即使不部署也可以申请一个空应用，用于获取appId及appName；
+        JSFContext.putIfAbsent( JSFContext.KEY_APPID, "123456" );
+        JSFContext.putIfAbsent( JSFContext.KEY_APPNAME, "test_app" );
+        //设置jsf客户端与注册中心的心跳间隔，默认30秒；
+        JSFContext.putGlobalVal(Constants.SETTING_REGISTRY_HEARTBEAT_INTERVAL, "30000");
+        //设置jsf客户端从注册中心定期拉取provider列表的时间间隔，一般设置120秒，不要太快，对注册中心有压力；
+        JSFContext.putGlobalVal(Constants.SETTING_REGISTRY_CHECK_INTERVAL, "120000");
+        //注册中心配置信息，通过index寻址注册中心地址；
+        RegistryConfig registryConfig = new RegistryConfig();
+        registryConfig.setIndex("i.jsf.jd.com");
+        //仅订阅注册中心服务发现
+        CLIENT_REGISTRY = RegistryFactory.getRegistry(registryConfig);
+    }
+
+
+    public static void main(String[] args) throws Exception {
+
+        ClassPool pool = ClassPool.getDefault();
+        CtClass cc = pool.makeInterface("com.jd.jnos.baize.rest.TestSub");
+        cc.setInterfaces(new CtClass[] {pool.getCtClass("com.jd.jnos.baize.rest.Test")});
+        Class<?> aClass = cc.toClass();
+        Object o = Proxy.newProxyInstance(ApplicationForWebTest.class.getClassLoader(), new Class[]{aClass}, new InvocationHandler() {
+            @Override
+            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                return "a";
+            }
+        });
+
+        //设置要发布服务的ip及端口
+        ServerConfig serverConfig = new ServerConfig();
+        serverConfig.setHost(JSFContext.getLocalHost()); //获取本机ip；
+        serverConfig.setPort(8090);//设置提供服务的端口;
+        
+
+        ProviderConfig providerConfig = new ProviderConfig();
+        providerConfig.setInterfaceId("com.jd.jnos.baize.rest.TestSub");
+        providerConfig.setAlias("aa");
+        providerConfig.setServer(serverConfig);
+        providerConfig.setRef(o);
+        //重要的：发起注册请求
+        CLIENT_REGISTRY.register(providerConfig,null);
+
+        synchronized (ApplicationForWebTest.class){
+            ApplicationForWebTest.class.wait();
+        }
+
+
+    }
+}
+```
+
+```java
+@Component
+@Slf4j
+public class TestCommandLineRunner implements CommandLineRunner, BeanClassLoaderAware {
+
+    ClassLoader classLoader;
+
+    @Override
+    public void run(String... args) throws Exception {
+        loadJsf();
+    }
+
+    @Override
+    public void setBeanClassLoader(ClassLoader classLoader) {
+     this.classLoader = classLoader;
+    }
+
+    private void loadJsf() throws Exception {
+        ClassPool pool = ClassPool.getDefault();
+        CtClass cc = pool.makeInterface("com.jd.jnos.baize.service.TestSub");
+
+        CtMethod ctMethod = new CtMethod(pool.getCtClass("java.lang.String"), "test",
+                new CtClass[] {pool.getCtClass("java.lang.String")}, cc);
+        ctMethod.setModifiers(Modifier.PUBLIC);
+        ctMethod.setModifiers(Modifier.ABSTRACT);
+        cc.addMethod(ctMethod);
+
+
+        Class<?> aClass = cc.toClass(classLoader, null);
+        Object o = Proxy.newProxyInstance(classLoader, new Class[]{aClass}, new InvocationHandler() {
+            @Override
+            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                return "a";
+            }
+        });
+
+        //设置要发布服务的ip及端口
+        ServerConfig serverConfig = new ServerConfig();
+        serverConfig.setHost(JSFContext.getLocalHost()); //获取本机ip；
+        serverConfig.setPort(22000);//设置提供服务的端口;
+        serverConfig.setTelnet(true);
+
+
+        //注册中心配置信息，通过index寻址注册中心地址；
+        RegistryConfig registryConfig = new RegistryConfig();
+        registryConfig.setIndex("i.jsf.jd.com");
+        //仅订阅注册中心服务发现
+
+
+        ProviderConfig providerConfig = new ProviderConfig();
+        providerConfig.setInterfaceId("com.jd.jnos.baize.service.TestSub");
+        providerConfig.setAlias("aa");
+        providerConfig.setServer(serverConfig);
+        providerConfig.setRegistry(registryConfig);
+        providerConfig.setRef(o);
+
+        providerConfig.export();
+    }
+
+}
+```
+
+## Camel 启动和删除路由
+
+```java
+
+ExtendedCamelContext adapt = camelContext.adapt(ExtendedCamelContext.class);
+final RoutesLoader loader = adapt.getRoutesLoader();
+ExecutorService executorService = Executors.newSingleThreadExecutor();
+executorService.submit(() -> {
+    int count = 0;
+    while (true) {
+        if (count % 2 == 0) {
+            log.info("添加了xml");
+            final Resource resource = ResourceHelper.fromString("camel.xml", xml);
+            loader.loadRoutes(resource);
+        } else {
+            log.info("删除了xml");
+            SpringBootCamelContext springBootCamelContext = camelContext.adapt(SpringBootCamelContext.class);
+            springBootCamelContext.stopRoute("test001");
+            boolean test001 = springBootCamelContext.removeRoute("test001");
+            log.info("{}", test001);
+
+        }
+        count++;
+        TimeUnit.SECONDS.sleep(30);
+    }
+});
+```
+
+
+
+```java
+static class MyClassLoader extends ClassLoader {
+    public MyClassLoader(ClassLoader parent) {
+        super(parent);
+    }
+}
+
+@Data
+static class A {
+    private Object a;
+}
+
+public static void main(String[] args) throws Exception {
+    ClassPool pool = ClassPool.getDefault();
+    //构建interface
+        CtClass c2 = pool.makeInterface("com.jd.Abc");
+        CtMethod ctMethod = new CtMethod(pool.getCtClass("java.util.Map"), "test",
+                new CtClass[] {pool.getCtClass("java.util.Map")}, c2);
+        ctMethod.setModifiers(Modifier.PUBLIC);
+        ctMethod.setModifiers(Modifier.ABSTRACT);
+        c2.addMethod(ctMethod);
+    MyClassLoader myClassLoader = new MyClassLoader(JsfComponent.class.getClassLoader());
+    System.out.println(myClassLoader.getParent());
+    Class aClass = c2.toClass(myClassLoader, null);
+    Object o = Proxy.newProxyInstance(myClassLoader, new Class[]{aClass}, new InvocationHandler() {
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            return "aaaaaaaaa";
+        }
+    });
+    A a = new A();
+    a.setA(o);
+    System.out.println(a.getA().toString());
+    System.out.println(a.getClass().getClassLoader());
+    System.out.println(a.getA().getClass().getClassLoader());
+
+    MyClassLoader myClassLoader2 = new MyClassLoader(JsfComponent.class.getClassLoader());
+    aClass = c2.toClass(myClassLoader2, null);
+    o = Proxy.newProxyInstance(myClassLoader2, new Class[]{aClass}, new InvocationHandler() {
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            return "aaaaaaaaa";
+        }
+    });
+    a.setA(o);
+    System.out.println(a.getA().toString());
+    System.out.println(a.getClass().getClassLoader());
+    System.out.println(a.getA().getClass().getClassLoader());
+
+    String path = "/Users/mipengcheng3/works/maven/repo/com/jd/jnos/baize/baize-hub-rpc-api/1.0.0-SNAPSHOT/baize-hub-rpc-api-1.0.0-SNAPSHOT.jar";
+    URL url = new File(path).toURI().toURL();
+    URLClassLoader urlClassLoader = new URLClassLoader(new URL[]{url}, JsfComponent.class.getClassLoader());
+    Class<?> aClass1 = urlClassLoader.loadClass("com.jd.jnos.baize.api.service.BaizeApplicationRelServiceJsf");
+    Class<?> aClass2 = urlClassLoader.loadClass("com.jd.jnos.baize.api.model.request.BaizeApplicationRelRequest");
+    Object o2 = Proxy.newProxyInstance(urlClassLoader, new Class[]{aClass1}, new InvocationHandler() {
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+
+            return null;
+        }
+    });
+    Object xxx = aClass2.newInstance();
+    new Thread(new Runnable() {
+        @Override
+        public void run() {
+            System.out.println(a.getA() + "===========");
+            System.out.println(o2.toString());
+            for (Method method : aClass1.getMethods()) {
+                try {
+                    method.invoke(o2,xxx);
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }).start();
+
+    TimeUnit.SECONDS.sleep(10);
+}
+```
+
+## Camel 拦截器
+
+// ================  因为RoutePolicy是基于Route的, 所以为了做到全局统一配置, 这里我们通过实现RoutePolicyFactory接口来实现
+// RoutePolicyFactoryInstrumentationImpl将为用户自定义的每个Route添加一个RoutePolicyAdvice, 实现了类似切面的逻辑统一存放。
+
+```java
+class RoutePolicyFactoryInstrumentationImpl implements RoutePolicyFactory {
+	static final String EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC = "METRIC-STOPWATCH";
+private final RoutePolicy policy = new RoutePolicyInstrumentationImpl();
+
+@Override
+public RoutePolicy createRoutePolicy(CamelContext camelContext, String routeId, RouteDefinition route) {
+	return policy;
+}
+
+// =========================================
+static class RoutePolicyInstrumentationImpl extends org.apache.camel.support.RoutePolicySupport
+      implements RoutePolicy {
+
+	@Override
+	public void onExchangeBegin(Route route, Exchange exchange) {
+		// 参考 CamelInternalProcessor.InstrumentationAdvice 内部类
+		final StopWatch answer = new StopWatch();
+		// ====================== 这里要使用栈进行存储, 至于原因:
+		// === 因为可能存在支线route, 例如 from().to("direct:500").to(xxxx) , 这里的"direct:500"会导致重建exchange, 也就是这里会再次被调用
+		if(exchange.getProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC) == null){
+			exchange.setProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC, new ArrayDeque<StopWatch>());
+		}
+		@SuppressWarnings("unchecked")
+		Deque<StopWatch> deque = exchange.getProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC, Deque.class);
+		deque.push(answer);
+	}
+
+	@Override
+	public void onExchangeDone(Route route, Exchange exchange) {
+		@SuppressWarnings("unchecked")
+		Deque<StopWatch> deque  = exchange.getProperty(EXCHANGE_PROERTIES_KEY_STOPWATCH_FOR_METRIC, Deque.class);
+		if(deque.size() > 1){
+			// 主Route还没走完
+			StopWatch subSW = deque.poll();
+			Console.log("支exchange {} 耗時 {} millis; routeId [ {} ]", exchange.getExchangeId(), subSW.taken(), route.getId());
+			return;
+		}
+    Console.log("主exchange {} 耗時 {} millis; routeId [ {} ]", exchange.getExchangeId(), 		           接口及      deque.poll().taken(), route.getId());
+		}
+	
+	}
+
+}
+```
+
+
+​			
+​			
+
+
+
+	// ====================== 配置
+	@Component
+	public class RoutePolicySample extends RouteBuilder {
+	@Override
+	public void configure() throws Exception {
+	    // 全局配置, 避免需要在每个Route定义上添加
+		getContext().addRoutePolicyFactory(new RoutePolicyFactoryInstrumentationImpl());
+	
+		from("rest:get,post:rp")//
+		      .routeId("RoutePolicy") //
+		      // 针对单个Route进行配置
+		      // .routePolicy(new RoutePolicyFactoryInstrumentationImpl.RoutePolicyInstrumentationImpl())//
+		      .process(customProcessor)//
+		      .to("direct:500")//
+		      .to("stream:err");
+	
+		from("direct:500") //
+		      .to("stream:out");
+		
+	}
+	}
+### Camel MDC日志
+
+```
+@Bean
+public CamelContextConfiguration contextConfiguration() {
+    return new CamelContextConfiguration() {
+        @Override
+        public void beforeApplicationStart(CamelContext context) {
+            context.setUseMDCLogging(true);
+            context.setUnitOfWorkFactory(MyUnitOfWork::new);
+        }
+
+        @Override
+        public void afterApplicationStart(CamelContext camelContext) {
+        }
+    };
+}
+Then, create your custom unit of work class
+
+public class MyUnitOfWork extends MDCUnitOfWork {
+    public MyUnitOfWork(Exchange exchange) {
+        super(exchange);
+        if( exchange.getProperty("myProp") != null){
+            MDC.put("myProp", (String) exchange.getProperty("myProp"));
+        }
+    }
+}
+
+
+
+最后使用如下方式来进行日志打印：%X{myProp}
+
+
+
+向线程池中传递MDC
+@Bean
+public Executor asyncServiceExecutor() {
+    logger.info("start asyncServiceExecutor");
+    // 使用VisiableThreadPoolTaskExecutor
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    // 配置核心线程数
+    executor.setCorePoolSize(20);
+    // 配置最大线程数
+    executor.setMaxPoolSize(100);
+    // 配置队列大小
+    executor.setQueueCapacity(99999);
+    // 配置线程池中的线程的名称前缀
+    executor.setThreadNamePrefix("async-service-");
+
+    // rejection-policy：当pool已经达到max size的时候，如何处理新任务
+    // CALLER_RUNS：不在新线程中执行任务，而是有调用者所在的线程来执行
+    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+    // 填充装饰器
+    executor.setTaskDecorator(new MdcTaskDecorator());
+    // 执行初始化
+    executor.initialize();
+    return TtlExecutors.getTtlExecutor(executor);
+}
+
+class MdcTaskDecorator implements TaskDecorator {
+    @Override
+    public Runnable decorate(Runnable runnable) {
+        Map<String, String> contextMap = MDC.getCopyOfContextMap();
+        return () -> {
+            try {
+                if (contextMap != null) {
+                    MDC.setContextMap(contextMap);
+                }
+                runnable.run();
+            } finally {
+                MDC.clear();
+            }
+        };
+    }
+}
+```
+
+
+
+## 使用字节码生成类
+
+```java
+public static BaizeJsfProviderConfig<?> generateJsfInterface(String alias, String clazz, List<String> methods,
+                                                     ClassLoader classLoader, JsfConsumer jsfConsumer,
+                                                     int port, String index)
+        throws NotFoundException, CannotCompileException {
+    log.info("alias: {}, class: {}, methods: {}, port: {}, index: {}", alias, clazz, methods, port, index);
+    //去重
+    Set<String> methodSet = new HashSet<>(methods);
+
+    //创建类，并生成动态代理
+    Class<?> aClass = null;
+
+
+    ClassPool pool = new ClassPool(null);
+    pool.appendSystemPath();
+    //构建interface
+
+    CtClass cc = pool.makeInterface(clazz);
+    //构建所有的方法
+    for (String method : methodSet) {
+        CtMethod ctMethod = new CtMethod(pool.getCtClass(MAP_ARG), method,
+                new CtClass[]{pool.getCtClass(MAP_ARG)}, cc);
+        ctMethod.setModifiers(Modifier.PUBLIC);
+        ctMethod.setModifiers(Modifier.ABSTRACT);
+        cc.addMethod(ctMethod);
+    }
+
+    ConsumerContainerClassLoader consumerContainerClassLoader = new ConsumerContainerClassLoader(classLoader);
+
+    aClass = cc.toClass(consumerContainerClassLoader, null);
+
+    //创建动态代理
+    JsfComponentInvocationHandler jsfComponentInvocationHandler = new JsfComponentInvocationHandler(jsfConsumer);
+    Object res = Proxy.newProxyInstance(consumerContainerClassLoader, new Class[]{aClass}, jsfComponentInvocationHandler);
+    BaizeJsfProviderConfig providerConfig = providerConfig(consumerContainerClassLoader, index, port, clazz, alias, res);
+    return providerConfig;
+}
+```
+
+## 各种开源协议汇总
+
+![image-20220223165558848](/Users/mipengcheng3/Library/Application Support/typora-user-images/image-20220223165558848.png)
+
+
+
+### 安装GraalVM
+
+参考：https://www.graalvm.org/22.0/docs/getting-started/macos/
+
+1. 下载对应压缩包：https://github.com/graalvm/graalvm-ce-builds/releases
+2. 在MAC环境下要执行 sudo xattr -r -d com.apple.quarantine /Users/mipengcheng3/works/graalvm/active
+3. 执行./gu install native-image
+
+## java课程笔记
+
+### 内存分配
+
+指针碰撞
+空闲链表
+    解决分配过程中的并发问题
+        CAS 谁抢到谁成功
+        TLAB 每个线程预先分配一个区间，各自在自己的区间上进行内存分配
+
+### 对象内存空间占用构成
+
+在HotSpot虚拟机中，对象在内存中的存储可以分为3个区域：对象头、实例数据和对齐填充。对象头有三行：类型指针（Klass Pointer）、MarkWord以及数据特有的数组长度
+
+### 逃逸分析 
+
+-XX:+DoEscapeAnalysis
+
+#### 标量替换
+
+如果栈帧中没有足够的空间存放一个不会逃逸的对象，那么会将该对象的成员变量分解为若干个被这个方法使用的成员变量代替，这些代替的成员变量在栈帧或寄存器上分配空间，这样就不会因为没有一大块连续空间导致对象内存不够分配。开启标量替换参数：-XX:+EliminateAllocations （JDK7之后默认开启）。
+
+### 字符串常量
+
+```java
+    @Test
+    public void testString() {
+        String a = new String("b") + new String("b");
+        String b = a.intern();
+        String c = "bb";
+
+        System.out.println(a==b);
+        System.out.println(a==c);
+        System.out.println(b==c);
+
+    }
+    
+    @Test
+    public void testString() {
+        String a = new String("b") + new String("b");
+        String c = "bb";
+        String b = a.intern();
+        
+
+        System.out.println(a==b);
+        System.out.println(a==c);
+        System.out.println(b==c);
+
+    }
+    
+    @Test
+    public void testStringJava() {
+        String a = new String("ja") + new String("va");
+        String b = a.intern();
+
+        System.out.println(a == b);
+    }
+```
+
+### Tomcat
+
+Tomcat就是一个HTTP服务器+Servlet容器，我们亲切地称呼它为WEB容器。
+
+CATALINA_HOME 里面只需要包含bin 和 lib
+
+CATALINA_BASE 包含 logs webapp conf
 
