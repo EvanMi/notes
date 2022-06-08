@@ -243,6 +243,7 @@ git clone '远程地址' 将远程的项目客隆到本地
 git clone '远程地址' ’本地文件名' # 不使用git的远程仓库的名称作为命名
 
 git pull = git fetch + git merge (merge远程分支到本地分支)
+git pull -r 可以直接rebase，不会有多有的merge commit 被推送到远程仓库
 git pull 的完整命令 git pull origin src:dest (src是远程分支，dest是本地分支)
 git fetch origin master:refs/remotes/origin/mymaster
 
