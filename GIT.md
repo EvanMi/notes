@@ -52,7 +52,7 @@ rm '文件' 也可以进行。 两者的区别是， git rm 需要先 git reset 
 
 git mv ’文件1' '文件2'将文件1重命名为文件2，和git rm一样做了两步操作。
 
-git commit --amend -m 'xxxxx' 修改最近一次提交的消息。
+git commit --amend -m 'xxxxx' 修改最近一次提交的消息,并将当前要提交的内容合并上去
 
 .gitigonre文件相关
 
@@ -79,6 +79,18 @@ git branch -d 'newbranch' #删除newbranch
 git checkout -b 'new_branch' #创建new_branch并切换过去
 
 git checkout -b 'new branch' 'from branch' # 从指定的分支创建一个新的分支并切换过去
+
+
+
+git checkout branch的时候，可能只是想切换到分支上去看看某些东西，而本地的工作不想提交也不想丢失，这时候就需要使用 
+
+git stash 隐藏
+
+切换完成，回到本地分支后使用
+
+git stash pop 来恢复现场
+
+
 
 上一条命令新版本的 git推荐使用：git checkout --track origin/test # 其实是上面命令的一种特殊情况，也就是不能指本地分支的名字了。
 
@@ -156,6 +168,7 @@ git 版本回退
 git reset --hard HEAD^ 回退到上一个提交，几个^就回退几下
 git reset --hard HEAD~n 回退到之前的n个提交
 git reset --hard commit_id
+git revert commit_id #该方法和reset不同，reset彻底删除，该方法是通过一个新的提交来撤销对应的提交内容
 
 git reflog 记录的是操作日志，通过reflog在找回被回退掉的commit，通过reset来跳转
 ```
@@ -195,6 +208,7 @@ git stash相关
  
  git push origin 'tag名称' 'tag名称2' # 推送到远程仓库
  git push origin --tags # 将本地尚未推动到远程的标签全部推送到远程仓库
+ git push --force #强推
  完整的推送语法
  git push origin refs/taga/v7.0:refs/tags/v7.0
  
