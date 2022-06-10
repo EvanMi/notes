@@ -1726,3 +1726,10 @@ CATALINA_HOME 里面只需要包含bin 和 lib
 
 CATALINA_BASE 包含 logs webapp conf
 
+## 解决MAC通过virtualbox安装ubuntu时 Could not mount the media/drive
+```
+sudo mkdir --p /media/cdrom
+sudo mount -t auto /dev/cdrom /media/cdrom/
+cd /media/cdrom/
+sudo sh VBoxLinuxAdditions.run
+```
