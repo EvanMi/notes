@@ -80,18 +80,6 @@ git checkout -b 'new_branch' #创建new_branch并切换过去
 
 git checkout -b 'new branch' 'from branch' # 从指定的分支创建一个新的分支并切换过去
 
-
-
-git checkout branch的时候，可能只是想切换到分支上去看看某些东西，而本地的工作不想提交也不想丢失，这时候就需要使用 
-
-git stash 隐藏
-
-切换完成，回到本地分支后使用
-
-git stash pop 来恢复现场
-
-
-
 上一条命令新版本的 git推荐使用：git checkout --track origin/test # 其实是上面命令的一种特殊情况，也就是不能指本地分支的名字了。
 
 git branch -v #显示当前分支的最新的版本号

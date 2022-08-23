@@ -1229,6 +1229,10 @@ jstat -gcutil pid
 S0     S1     E      O      M     CCS    YGC     YGCT    FGC    FGCT     GCT
 
 jstat -gc pid 1000 10 #每秒打印一次gc日志，一共打印10次
+
+
+# 主动进行垃圾回收
+jcmd pid GC.run
 ```
 
 jmap
@@ -1382,7 +1386,22 @@ HotSpot 使用 `OopMap` 把引用类型的指针记录下来，让 `GC Roots` �
 为了减少更新 `OopMap` 的开销，引入了 **安全点**。GC STW 时，线程需要跑到距离自己最近的**安全点**，更新完 `OopMap` 才能挂起。  
 处于`Sleep` 或者 `Blocked` 状态的线程无法跑到**安全点**，需要引入**安全区域**。GC 的时候，不会去管处于安全区域的线程，线程离开安全区域的时候，如果处于 STW 则需要等待直至恢复。
 
+### 三色标记法误标的两个条件（同时满足）
 
+1. 赋值器插入了一条或者多条黑色对象到白色对象的引用
+2. 赋值器删除了全部从灰色对象到白色对象的直接引用或者间接引用
+
+#### 误标解决方案
+
+### 增量更新
+
+增量更新要破坏的是第一个条件，当黑色对象插入新的指向白色对象的引用关系时，就将这个新插入的引用记录下来，等并发扫描结束之后，再将这些记录过的引用关系中的黑色对象为根，重新扫描一次。这可以简化理解为，黑色对象一旦新插入了指向白色对象的引用之后，它就变回灰色对象了。
+
+### 原始快照 (STAB)
+
+原始快照要破坏的是第二个条件，当灰色对象要删除指向白色对象的引用关系时，就将这个要删除的引用记录下来，在并发扫描结束之后，再将这些记录过的引用关系中的灰色对象为根，重新扫描一次。这也可以简化理解为，无论引用关系删除与否，都会按照刚刚开始扫描那一刻的对象图快照来进行搜索。
+
+链接：https://juejin.cn/post/6996123086296252453
 
 ## 一些新兴的软件工具
 
@@ -1733,3 +1752,16 @@ sudo mount -t auto /dev/cdrom /media/cdrom/
 cd /media/cdrom/
 sudo sh VBoxLinuxAdditions.run
 ```
+
+# brew相关命令
+
+```bash
+brew install openjdk@15 #安装openjdk 15
+#为了能够让idea打开，需要创建如下软连接
+sudo ln -sfn /usr/local/opt/openjdk/libexec/openjd.jdk /Libary/Java/JavaVirtualMachines/openjdk.jdk
+
+brew install maven #安装maven
+
+brew install node #安装node js 已经npm
+```
+
