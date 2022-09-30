@@ -61,9 +61,7 @@ git remote set-url origin https://github.com/Homebrew/homebrew-core
 brew update
 ```
 
-
-
-### 查看公网IP
+## 查看公网IP
 
 curl ifconfig.me
 
